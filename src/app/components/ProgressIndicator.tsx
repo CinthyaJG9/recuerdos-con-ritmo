@@ -14,14 +14,14 @@ export function ProgressIndicator({ current, total }: ProgressIndicatorProps) {
         <p className="text-[18px] text-warm-gray">
           Pregunta {current} de {total}
         </p>
-        <p className="text-[18px] text-wine">
+        <p className="text-[18px] text-coral">
           {Math.round(percentage)}%
         </p>
       </div>
       
       <div className="w-full h-3 bg-warm-beige-dark rounded-full overflow-hidden">
         <div 
-          className="h-full bg-wine transition-all duration-500 ease-out rounded-full"
+          className="h-full bg-coral transition-all duration-500 ease-out rounded-full"
           style={{ width: `${percentage}%` }}
         />
       </div>

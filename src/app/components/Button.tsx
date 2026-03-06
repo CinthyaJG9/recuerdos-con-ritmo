@@ -19,12 +19,12 @@ export function Button({
   type = 'button',
   disabled = false
 }: ButtonProps) {
-  const baseStyles = 'rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseStyles = 'rounded-2xl transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl';
   
   const variantStyles = {
-    primary: 'bg-wine text-warm-white hover:bg-wine-dark shadow-md',
-    secondary: 'bg-deep-blue text-warm-white hover:bg-deep-blue-dark shadow-md',
-    outline: 'bg-transparent border-2 border-wine text-wine hover:bg-wine hover:text-warm-white'
+    primary: 'bg-coral text-white hover:bg-coral-dark',
+    secondary: 'bg-lavender text-white hover:bg-lavender-dark',
+    outline: 'bg-transparent border-3 border-coral text-coral hover:bg-coral hover:text-white shadow-md hover:shadow-lg'
   };
   
   const sizeStyles = {

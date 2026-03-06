@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Lightbulb, Home } from 'lucide-react';
 import { artistQuestions } from '../data/artistQuiz';
 import { ProgressIndicator } from '../components/ProgressIndicator';

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 import { Music2 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { HelpModal } from '../components/HelpModal';
@@ -13,11 +13,11 @@ export function Welcome() {
       <div className="max-w-2xl w-full text-center">
         {/* Logo y título */}
         <div className="mb-12">
-          <div className="inline-flex items-center justify-center w-28 h-28 bg-wine/10 rounded-3xl mb-6">
-            <Music2 className="w-16 h-16 text-wine" strokeWidth={2} />
+          <div className="inline-flex items-center justify-center w-28 h-28 bg-gradient-to-br from-peach-light to-coral/20 rounded-3xl mb-6 shadow-md">
+            <Music2 className="w-16 h-16 text-coral" strokeWidth={2} />
           </div>
           
-          <h1 className="text-[48px] mb-4 text-wine leading-tight">
+          <h1 className="text-[48px] mb-4 text-coral leading-tight">
             Recuerdos con ritmo
           </h1>
           
@@ -27,28 +27,28 @@ export function Welcome() {
         </div>
         
         {/* Decoración sutil de notas musicales 
-        <div className="mb-12 opacity-20">
+        <div className="mb-12 opacity-25">
           <svg className="mx-auto w-64 h-16" viewBox="0 0 256 64" fill="none">
             <path 
               d="M20 40 Q 30 20, 40 40 T 60 40 T 80 40" 
               stroke="currentColor" 
               strokeWidth="2" 
               fill="none"
-              className="text-wine"
+              className="text-coral"
             />
-            <circle cx="45" cy="32" r="4" fill="currentColor" className="text-wine" />
-            <circle cx="75" cy="36" r="4" fill="currentColor" className="text-wine" />
+            <circle cx="45" cy="32" r="4" fill="currentColor" className="text-lavender" />
+            <circle cx="75" cy="36" r="4" fill="currentColor" className="text-sky-blue" />
             <path 
               d="M45 32 L 45 20" 
               stroke="currentColor" 
               strokeWidth="2"
-              className="text-wine"
+              className="text-lavender"
             />
             <path 
               d="M75 36 L 75 24" 
               stroke="currentColor" 
               strokeWidth="2"
-              className="text-wine"
+              className="text-sky-blue"
             />
           </svg>
         </div>*/}

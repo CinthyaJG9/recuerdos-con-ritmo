@@ -19,11 +19,11 @@ export function SongCard({ song, onClick }: SongCardProps) {
   return (
     <button
       onClick={onClick}
-      className="w-full bg-card rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-200 active:scale-98 border-2 border-transparent hover:border-wine/30"
+      className="w-full bg-card rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98] border-2 border-transparent hover:border-coral/20"
     >
       <div className="flex items-start gap-6">
-        <div className="flex-shrink-0 w-16 h-16 bg-wine/10 rounded-xl flex items-center justify-center">
-          <Icon className="w-8 h-8 text-wine" strokeWidth={2} />
+        <div className="flex-shrink-0 w-16 h-16 bg-peach/20 rounded-2xl flex items-center justify-center">
+          <Icon className="w-8 h-8 text-coral" strokeWidth={2} />
         </div>
         
         <div className="flex-1 text-left">

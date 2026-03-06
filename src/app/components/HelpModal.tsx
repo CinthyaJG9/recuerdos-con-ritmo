@@ -30,7 +30,7 @@ export function HelpModal({ isOpen, onClose, gameType = 'complete' }: HelpModalP
           {gameType === 'complete' ? (
             <>
               <div className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-wine text-warm-white rounded-full flex items-center justify-center text-[20px]">
+                <div className="flex-shrink-0 w-10 h-10 bg-coral text-white rounded-full flex items-center justify-center text-[20px]">
                   1
                 </div>
                 <p className="text-[20px] text-warm-black leading-relaxed pt-1">
@@ -39,7 +39,7 @@ export function HelpModal({ isOpen, onClose, gameType = 'complete' }: HelpModalP
               </div>
               
               <div className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-wine text-warm-white rounded-full flex items-center justify-center text-[20px]">
+                <div className="flex-shrink-0 w-10 h-10 bg-coral text-white rounded-full flex items-center justify-center text-[20px]">
                   2
                 </div>
                 <p className="text-[20px] text-warm-black leading-relaxed pt-1">
@@ -48,7 +48,7 @@ export function HelpModal({ isOpen, onClose, gameType = 'complete' }: HelpModalP
               </div>
               
               <div className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-wine text-warm-white rounded-full flex items-center justify-center text-[20px]">
+                <div className="flex-shrink-0 w-10 h-10 bg-coral text-white rounded-full flex items-center justify-center text-[20px]">
                   3
                 </div>
                 <p className="text-[20px] text-warm-black leading-relaxed pt-1">
@@ -57,7 +57,7 @@ export function HelpModal({ isOpen, onClose, gameType = 'complete' }: HelpModalP
               </div>
               
               <div className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-wine text-warm-white rounded-full flex items-center justify-center text-[20px]">
+                <div className="flex-shrink-0 w-10 h-10 bg-coral text-white rounded-full flex items-center justify-center text-[20px]">
                   4
                 </div>
                 <p className="text-[20px] text-warm-black leading-relaxed pt-1">
@@ -68,7 +68,7 @@ export function HelpModal({ isOpen, onClose, gameType = 'complete' }: HelpModalP
           ) : (
             <>
               <div className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-wine text-warm-white rounded-full flex items-center justify-center text-[20px]">
+                <div className="flex-shrink-0 w-10 h-10 bg-coral text-white rounded-full flex items-center justify-center text-[20px]">
                   1
                 </div>
                 <p className="text-[20px] text-warm-black leading-relaxed pt-1">
@@ -77,7 +77,7 @@ export function HelpModal({ isOpen, onClose, gameType = 'complete' }: HelpModalP
               </div>
               
               <div className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-wine text-warm-white rounded-full flex items-center justify-center text-[20px]">
+                <div className="flex-shrink-0 w-10 h-10 bg-coral text-white rounded-full flex items-center justify-center text-[20px]">
                   2
                 </div>
                 <p className="text-[20px] text-warm-black leading-relaxed pt-1">
@@ -86,7 +86,7 @@ export function HelpModal({ isOpen, onClose, gameType = 'complete' }: HelpModalP
               </div>
               
               <div className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-wine text-warm-white rounded-full flex items-center justify-center text-[20px]">
+                <div className="flex-shrink-0 w-10 h-10 bg-coral text-white rounded-full flex items-center justify-center text-[20px]">
                   3
                 </div>
                 <p className="text-[20px] text-warm-black leading-relaxed pt-1">

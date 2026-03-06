@@ -3,45 +3,61 @@
 :root {
   --font-size: 20px;
   
-  /* Paleta cálida y sobria */
-  --warm-beige: #f5f1e8;
-  --warm-beige-dark: #e8e3d8;
-  --wine: #8b3a47;
-  --wine-dark: #6d2d38;
-  --wine-light: #a54856;
-  --deep-blue: #2c3e5c;
-  --deep-blue-dark: #1f2d42;
-  --olive-green: #6b7c5b;
-  --olive-green-dark: #556349;
-  --warm-white: #fafaf7;
-  --warm-black: #2a2520;
-  --warm-gray: #6b6660;
-  --warm-gray-light: #a39d96;
+  /* Nueva paleta cálida y emocional - evita colores institucionales */
+  /* Tonos principales */
+  --peach: #ffcba8;
+  --peach-dark: #f5b899;
+  --peach-light: #ffe5d109;
+  --coral: #ff9a7c;
+  --coral-dark: #e88568;
+  --coral-light: #ffb39a16;
+  --sky-blue: #a8d5e8;
+  --sky-blue-dark: #8fc4db;
+  --sky-blue-light: #c5e5f351;  
+  --lavender: #c9b8e0;
+  --lavender-dark: #b5a1d3;
+  --lavender-light: #ddd1ed00;
+  --warm-beige: #f9f3ec;
+  --warm-beige-dark: #f0e8dc;
+  --cream: #fffbf5;
+  --ivory: #faf6f0;
   
-  --background: var(--warm-beige);
+  /* Colores de texto y neutros */
+  --warm-black: #3a3530;
+  --warm-gray: #736b64;
+  --warm-gray-light: #a89f9700;
+  
+  /* Colores de feedback amigables */
+  --success-green: #9bc995;
+  --success-green-dark: #88b782;
+  --error-coral: #ff9a7c;
+  --error-coral-dark: #e88568;
+  
+  /* Mapeo semántico */
+  --background: var(--ivory);
   --foreground: var(--warm-black);
-  --card: var(--warm-white);
+  --card: var(--cream);
   --card-foreground: var(--warm-black);
-  --popover: var(--warm-white);
+  --popover: var(--cream);
   --popover-foreground: var(--warm-black);
-  --primary: var(--wine);
-  --primary-foreground: var(--warm-white);
-  --secondary: var(--deep-blue);
-  --secondary-foreground: var(--warm-white);
-  --muted: var(--warm-beige-dark);
+  --primary: var(--coral);
+  --primary-foreground: white;
+  --secondary: var(--lavender);
+  --secondary-foreground: white;
+  --muted: var(--warm-beige);
   --muted-foreground: var(--warm-gray);
-  --accent: var(--olive-green);
-  --accent-foreground: var(--warm-white);
-  --destructive: var(--wine-dark);
-  --destructive-foreground: var(--warm-white);
-  --border: rgba(42, 37, 32, 0.15);
+  --accent: var(--sky-blue);
+  --accent-foreground: var(--warm-black);
+  --destructive: var(--error-coral);
+  --destructive-foreground: white;
+  --border: rgba(58, 53, 48, 0.12);
   --input: transparent;
-  --input-background: var(--warm-white);
+  --input-background: var(--cream);
   --switch-background: var(--warm-gray-light);
   --font-weight-medium: 600;
   --font-weight-normal: 400;
-  --ring: var(--wine);
-  --radius: 0.75rem;
+  --ring: var(--coral);
+  --radius: 1rem;
   
   /* Tamaños de texto aumentados para accesibilidad */
   --text-base: 20px;
@@ -78,19 +94,30 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   
+  /* Colores personalizados disponibles en Tailwind */
+  --color-peach: var(--peach);
+  --color-peach-dark: var(--peach-dark);
+  --color-peach-light: var(--peach-light);
+  --color-coral: var(--coral);
+  --color-coral-dark: var(--coral-dark);
+  --color-coral-light: var(--coral-light);
+  --color-sky-blue: var(--sky-blue);
+  --color-sky-blue-dark: var(--sky-blue-dark);
+  --color-sky-blue-light: var(--sky-blue-light);
+  --color-lavender: var(--lavender);
+  --color-lavender-dark: var(--lavender-dark);
+  --color-lavender-light: var(--lavender-light);
   --color-warm-beige: var(--warm-beige);
   --color-warm-beige-dark: var(--warm-beige-dark);
-  --color-wine: var(--wine);
-  --color-wine-dark: var(--wine-dark);
-  --color-wine-light: var(--wine-light);
-  --color-deep-blue: var(--deep-blue);
-  --color-deep-blue-dark: var(--deep-blue-dark);
-  --color-olive-green: var(--olive-green);
-  --color-olive-green-dark: var(--olive-green-dark);
-  --color-warm-white: var(--warm-white);
+  --color-cream: var(--cream);
+  --color-ivory: var(--ivory);
   --color-warm-black: var(--warm-black);
   --color-warm-gray: var(--warm-gray);
   --color-warm-gray-light: var(--warm-gray-light);
+  --color-success-green: var(--success-green);
+  --color-success-green-dark: var(--success-green-dark);
+  --color-error-coral: var(--error-coral);
+  --color-error-coral-dark: var(--error-coral-dark);
 }
 
 @layer base {

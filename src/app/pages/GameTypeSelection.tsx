@@ -1,109 +1,83 @@
-import React from 'react';
-import { useNavigate, useParams } from 'react-router';
-import { ArrowLeft, CheckCircle2, Shuffle } from 'lucide-react';
-import { songs } from '../data/songs';
-import { Button } from '../components/Button';
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { fetchLyrics, processLyricsForGame } from '../data/lyricsService';
 
 export function GameTypeSelection() {
   const navigate = useNavigate();
-  const { songId } = useParams<{ songId: string }>();
-  const song = songs.find(s => s.id === songId);
+  const location = useLocation();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  if (!song) {
-    navigate('/songs');
+  const track = location.state?.track;
+  
+  if (!track) {
+    setTimeout(() => navigate('/songs'), 0);
     return null;
   }
-  
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 bg-card shadow-sm border-b border-border z-10">
-        <div className="max-w-4xl mx-auto px-4 py-5 flex items-center gap-4">
-          <button
-            onClick={() => navigate('/songs')}
-            className="w-12 h-12 flex items-center justify-center rounded-xl hover:bg-warm-beige-dark transition-colors flex-shrink-0"
-            aria-label="Volver a canciones"
-          >
-            <ArrowLeft className="w-7 h-7 text-wine" strokeWidth={2} />
-          </button>
-          
-          <div>
-            <h1 className="text-[28px] text-warm-black leading-tight">
-              {song.title}
-            </h1>
-            <p className="text-[18px] text-warm-gray">
-              {song.artist}
-            </p>
-          </div>
-        </div>
-      </div>
+
+  const handleCompleteLyrics = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Normalización de datos para asegurar que enviamos strings a la API
+      const artistName = track.artist || (track.artists && track.artists[0]?.name) || "Unknown";
+      const trackName = track.title || track.name || "Unknown";
+
+      const lyricsData = await fetchLyrics(artistName, trackName);
       
-      {/* Opciones de juego */}
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        <h2 className="text-[26px] text-warm-black mb-8 text-center">
-          ¿Cómo quieres practicar?
-        </h2>
-        
-        <div className="space-y-6">
-          {/* Completar letra */}
-          <div 
-            onClick={() => navigate(`/game/${songId}/complete`)}
-            className="bg-card rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all cursor-pointer border-2 border-transparent hover:border-wine/30 active:scale-98"
-          >
-            <div className="flex items-start gap-6">
-              <div className="flex-shrink-0 w-16 h-16 bg-wine/10 rounded-xl flex items-center justify-center">
-                <CheckCircle2 className="w-9 h-9 text-wine" strokeWidth={2} />
-              </div>
-              
-              <div className="flex-1">
-                <h3 className="text-[26px] mb-3 text-warm-black">
-                  Completar la letra
-                </h3>
-                <p className="text-[20px] text-warm-gray leading-relaxed mb-3">
-                  Lee fragmentos de la canción y elige la palabra que falta
-                </p>
-                <div className="inline-flex items-center gap-2 bg-olive-green/10 px-4 py-2 rounded-lg">
-                  <div className="w-2 h-2 bg-olive-green rounded-full"></div>
-                  <span className="text-[18px] text-olive-green-dark">Nivel Fácil</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Ordenar fragmentos */}
-          <div 
-            className="bg-card rounded-2xl p-8 shadow-lg border-2 border-warm-gray-light/30 opacity-60 cursor-not-allowed"
-          >
-            <div className="flex items-start gap-6">
-              <div className="flex-shrink-0 w-16 h-16 bg-warm-gray-light/10 rounded-xl flex items-center justify-center">
-                <Shuffle className="w-9 h-9 text-warm-gray-light" strokeWidth={2} />
-              </div>
-              
-              <div className="flex-1">
-                <h3 className="text-[26px] mb-3 text-warm-gray">
-                  Ordenar fragmentos
-                </h3>
-                <p className="text-[20px] text-warm-gray-light leading-relaxed mb-3">
-                  Organiza las frases en el orden correcto de la canción
-                </p>
-                <div className="inline-flex items-center gap-2 bg-warm-gray-light/10 px-4 py-2 rounded-lg">
-                  <div className="w-2 h-2 bg-warm-gray-light rounded-full"></div>
-                  <span className="text-[18px] text-warm-gray-light">Próximamente</span>
-                </div>
-              </div>
-            </div>
-          </div>
+      if (!lyricsData?.lyrics) {
+        throw new Error('No se encontraron letras para esta canción.');
+      }
+      
+      const gameQuestions = processLyricsForGame(lyricsData.lyrics);
+      
+      if (gameQuestions.length === 0) {
+        throw new Error('La letra es demasiado corta para generar el juego.');
+      }
+      
+      navigate(`/game/${track.id}/complete`, {
+        state: { track, questions: gameQuestions, lyrics: lyricsData.lyrics }
+      });
+      
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100 p-6">
+      <div className="max-w-2xl mx-auto">
+        <button onClick={() => navigate('/songs')} className="mb-6 p-3 bg-white rounded-xl shadow-sm">
+          <ArrowLeft className="text-amber-900" />
+        </button>
+
+        <div className="bg-white rounded-3xl p-8 shadow-xl text-center mb-8">
+          <img src={track.image} className="w-48 h-48 mx-auto rounded-2xl shadow-lg mb-6 object-cover" alt="" />
+          <h2 className="text-3xl font-bold text-amber-900">{track.title}</h2>
+          <p className="text-xl text-amber-600">{track.artist}</p>
         </div>
-        
-        <div className="mt-12 text-center">
-          <Button 
-            onClick={() => navigate('/songs')}
-            variant="outline"
-            size="medium"
-          >
-            Elegir otra canción
-          </Button>
-        </div>
+
+        {error && (
+          <div className="bg-red-50 border-2 border-red-200 p-4 rounded-2xl mb-6 flex gap-3 items-center text-red-700">
+            <AlertCircle /> <p>{error}</p>
+          </div>
+        )}
+
+        <button
+          onClick={handleCompleteLyrics}
+          disabled={isLoading}
+          className="w-full bg-green-500 hover:bg-green-600 text-white p-8 rounded-3xl shadow-lg transition-all flex items-center justify-between disabled:opacity-50"
+        >
+          <div className="text-left">
+            <h3 className="text-2xl font-bold">Completar la Letra</h3>
+            <p className="opacity-90">Practica tu comprensión lectora</p>
+          </div>
+          {isLoading ? <Loader2 className="animate-spin w-10 h-10" /> : <CheckCircle2 className="w-10 h-10" />}
+        </button>
       </div>
     </div>
   );

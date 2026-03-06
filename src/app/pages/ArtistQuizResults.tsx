@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Mic2, Award, Home } from 'lucide-react';
 import { Button } from '../components/Button';
 

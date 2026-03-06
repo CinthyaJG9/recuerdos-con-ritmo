@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter } from 'react-router-dom';
 import { Welcome } from './pages/Welcome';
 import { GameMenu } from './pages/GameMenu';
 import { SongSelection } from './pages/SongSelection';
@@ -61,4 +61,8 @@ export const router = createBrowserRouter([
     path: '/proverbs/results',
     Component: ProverbsResults,
   },
+  {
+    path: 'game:songId/complete',
+    Component: CompleteLyrics,
+  }
 ]);
