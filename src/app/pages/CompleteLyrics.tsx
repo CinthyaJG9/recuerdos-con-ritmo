@@ -35,10 +35,10 @@ export function CompleteLyrics() {
                             );
     
     if (!track || !isValidQuestions) {
-      console.log('❌ CompleteLyrics: Datos inválidos, redirigiendo a songs');
+      console.log('CompleteLyrics: Datos inválidos, redirigiendo a songs');
       navigate('/songs', { replace: true });
     } else {
-      console.log('✅ CompleteLyrics: Datos válidos,', questions.length, 'preguntas');
+      console.log('CompleteLyrics: Datos válidos,', questions.length, 'preguntas');
       setIsValid(true);
     }
   }, [track, questions, navigate]);
