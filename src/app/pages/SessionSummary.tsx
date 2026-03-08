@@ -92,8 +92,7 @@ export function SessionSummary() {
             {message.subtitle}
           </p>
         </div>
-        
-        {/* Tarjeta de resultados - más grande y legible */}
+
         <div className="bg-white rounded-3xl p-8 shadow-xl mb-8 border-2 border-amber-200">
           
           {/* Canción practicada */}

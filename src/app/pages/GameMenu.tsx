@@ -109,8 +109,7 @@ export function GameMenu() {
           </div>
           
         </div>
-        
-        {/* Nota opcional muy sutil */}
+
         <p className="text-center text-amber-600 text-base mt-8">
           Todos los juegos son fáciles y divertidos
         </p>

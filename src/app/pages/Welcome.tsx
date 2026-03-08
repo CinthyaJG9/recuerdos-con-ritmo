@@ -52,8 +52,7 @@ export function Welcome() {
             <p className="text-lg sm:text-xl text-amber-800 leading-relaxed">
               Un espacio para disfrutar y recordar las canciones y refranes que amas
             </p>
-            
-            {/* Pequeño detalle con corazón */}
+
             <div className="flex items-center justify-center gap-2 mt-3 text-amber-600">
               <Heart className="w-5 h-5 fill-amber-500 text-amber-500" />
               <span className="text-base">Hecho con cariño para ti</span>

@@ -162,7 +162,7 @@ export function CompleteLyrics() {
                   Siguiente pregunta en...
                 </span>
                 <span className="text-2xl font-bold text-amber-800">
-                  {timeLeft}s
+                  {timeLeft}
                 </span>
               </div>
               <div className="w-full h-3 bg-amber-100 rounded-full overflow-hidden">

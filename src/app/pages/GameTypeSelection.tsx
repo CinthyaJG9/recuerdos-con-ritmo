@@ -53,7 +53,7 @@ export function GameTypeSelection() {
     setError(null);
     
     try {
-      console.log('🎵 Cargando juego de completar para:', track.artist, '-', track.title);
+      console.log('Cargando juego de completar para:', track.artist, '-', track.title);
       
       if (!track.artist || !track.title) {
         throw new Error('Datos de la canción incompletos');
@@ -118,7 +118,7 @@ const handleOrderGame = async () => {
   setError(null);
   
   try {
-    console.log('🎵 Cargando juego de ordenar para:', track.artist, '-', track.title);
+    console.log(' Cargando juego de ordenar para:', track.artist, '-', track.title);
     
     if (!track.artist || !track.title) {
       throw new Error('Datos de la canción incompletos');
@@ -140,11 +140,11 @@ const handleOrderGame = async () => {
       return;
     }
     
-    console.log('✅ Letra obtenida, longitud:', lyricsData.lyrics.length);
+    console.log(' Letra obtenida, longitud:', lyricsData.lyrics.length);
     
     const orderQuestions = processOrderGame(lyricsData.lyrics);
     
-    console.log('📊 Preguntas de ordenar generadas:', orderQuestions);
+    console.log(' Preguntas de ordenar generadas:', orderQuestions);
     
     if (!orderQuestions || orderQuestions.length === 0) {
       setError('No se pudo generar el juego de ordenar para esta canción');
@@ -175,8 +175,8 @@ const handleOrderGame = async () => {
       setIsPlaying(false);
     }
     
-    console.log('🎯 Navegando a OrderGame con', orderQuestions.length, 'rondas');
-    console.log('📍 Datos a enviar:', {
+    console.log('Navegando a OrderGame con', orderQuestions.length, 'rondas');
+    console.log('Datos a enviar:', {
       track: {
         title: track.title,
         artist: track.artist,

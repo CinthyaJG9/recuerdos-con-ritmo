@@ -157,6 +157,8 @@ export function processOrderGame(lyrics: string): Array<{
   verses: string[];
   correctOrder: number[];
   totalVerses: number;
+  startIndex: number;
+  originalVerses: string[]; // Guardamos los versos originales para referencia
 }> {
   console.log('🎮 Procesando juego de ordenar versos...');
   
@@ -178,62 +180,56 @@ export function processOrderGame(lyrics: string): Array<{
              !verse.match(/^[0-9\s]+$/);
     });
   
-  console.log(`📊 Total de versos: ${allVerses.length}`);
+  console.log(`📊 Total de versos en la canción: ${allVerses.length}`);
   
-  if (allVerses.length < 6) {
+  if (allVerses.length < 8) {
     console.log('❌ Muy pocos versos para ordenar');
-    // Versión de respaldo con 3 versos
-    if (allVerses.length >= 3) {
-      const fallbackQuestions = [];
-      const selectedVerses = allVerses.slice(0, 3);
-      fallbackQuestions.push({
-        verses: [...selectedVerses].sort(() => Math.random() - 0.5),
-        correctOrder: [0, 1, 2],
-        totalVerses: 3
-      });
-      return fallbackQuestions;
-    }
     return [];
   }
   
   const questions = [];
+  const VERSOS_POR_RONDA = 4; // 4 versos por ronda
+  const RONDAS_TOTALES = 3;    // 3 rondas
   
-  // Crear 3 rondas de ordenamiento con diferentes bloques
-  const bloques = [
-    { start: 0, count: 4 },
-    { start: 2, count: 4 },
-    { start: 4, count: 4 },
-    { start: 6, count: 4 }
-  ];
-  
-  for (const bloque of bloques) {
-    if (bloque.start + bloque.count <= allVerses.length) {
-      const selectedVerses = allVerses.slice(bloque.start, bloque.start + bloque.count);
+  // Tomar bloques CONSECUTIVOS desde el principio
+  for (let ronda = 0; ronda < RONDAS_TOTALES; ronda++) {
+    const startIdx = ronda * VERSOS_POR_RONDA;
+    
+    // Verificar que haya suficientes versos
+    if (startIdx + VERSOS_POR_RONDA <= allVerses.length) {
+      // Estos son los versos ORIGINALES en orden correcto
+      const originalVerses = allVerses.slice(startIdx, startIdx + VERSOS_POR_RONDA);
       
-      // Crear el orden correcto
-      const correctOrder = selectedVerses.map((_, idx) => idx);
+      // Creamos un array de objetos con el verso y su índice original
+      const versesWithIndices = originalVerses.map((verse, idx) => ({
+        text: verse,
+        originalIndex: idx
+      }));
       
-      // Desordenar los versos
-      const shuffledVerses = [...selectedVerses].sort(() => Math.random() - 0.5);
+      // Desordenamos para presentarlos al usuario
+      const shuffled = [...versesWithIndices].sort(() => Math.random() - 0.5);
+      
+      // Extraemos solo los textos para mostrar
+      const shuffledVerses = shuffled.map(item => item.text);
+      
+      // El orden correcto son los índices originales en el orden correcto
+      // Es decir, para cada posición en shuffledVerses, necesitamos saber
+      // qué índice original le corresponde
+      const correctOrder = shuffled.map(item => item.originalIndex);
+      
+      console.log(`📌 Ronda ${ronda + 1}:`);
+      console.log(`   Versos originales:`, originalVerses);
+      console.log(`   Versos desordenados:`, shuffledVerses);
+      console.log(`   Orden correcto:`, correctOrder);
       
       questions.push({
         verses: shuffledVerses,
         correctOrder: correctOrder,
-        totalVerses: selectedVerses.length
+        totalVerses: VERSOS_POR_RONDA,
+        startIndex: startIdx,
+        originalVerses: originalVerses
       });
     }
-  }
-  
-  // Asegurar que tengamos al menos 3 rondas
-  while (questions.length < 3 && questions.length < allVerses.length - 3) {
-    const startIdx = Math.floor(Math.random() * (allVerses.length - 3));
-    const selectedVerses = allVerses.slice(startIdx, startIdx + 4);
-    
-    questions.push({
-      verses: [...selectedVerses].sort(() => Math.random() - 0.5),
-      correctOrder: [0, 1, 2, 3],
-      totalVerses: 4
-    });
   }
   
   console.log(`✅ Rondas de ordenamiento creadas: ${questions.length}`);
