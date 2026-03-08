@@ -151,3 +151,91 @@ export function processLyricsForGame(lyrics: string) {
   
   return questions;
 }
+
+// Juego de ordenar versos - VERSIÓN CORREGIDA
+export function processOrderGame(lyrics: string): Array<{
+  verses: string[];
+  correctOrder: number[];
+  totalVerses: number;
+}> {
+  console.log('🎮 Procesando juego de ordenar versos...');
+  
+  if (!lyrics || lyrics.trim() === '') {
+    console.log('❌ Letra vacía');
+    return [];
+  }
+  
+  // Limpiar timestamps
+  const cleanLyrics = lyrics.replace(/\[\d{2}:\d{2}\.\d{2,}\]/g, '').trim();
+  
+  // Dividir en versos y limpiar
+  const allVerses = cleanLyrics.split('\n')
+    .map(verse => verse.trim())
+    .filter(verse => {
+      return verse.length > 10 && 
+             !verse.includes('[') && 
+             !verse.includes(']') &&
+             !verse.match(/^[0-9\s]+$/);
+    });
+  
+  console.log(`📊 Total de versos: ${allVerses.length}`);
+  
+  if (allVerses.length < 6) {
+    console.log('❌ Muy pocos versos para ordenar');
+    // Versión de respaldo con 3 versos
+    if (allVerses.length >= 3) {
+      const fallbackQuestions = [];
+      const selectedVerses = allVerses.slice(0, 3);
+      fallbackQuestions.push({
+        verses: [...selectedVerses].sort(() => Math.random() - 0.5),
+        correctOrder: [0, 1, 2],
+        totalVerses: 3
+      });
+      return fallbackQuestions;
+    }
+    return [];
+  }
+  
+  const questions = [];
+  
+  // Crear 3 rondas de ordenamiento con diferentes bloques
+  const bloques = [
+    { start: 0, count: 4 },
+    { start: 2, count: 4 },
+    { start: 4, count: 4 },
+    { start: 6, count: 4 }
+  ];
+  
+  for (const bloque of bloques) {
+    if (bloque.start + bloque.count <= allVerses.length) {
+      const selectedVerses = allVerses.slice(bloque.start, bloque.start + bloque.count);
+      
+      // Crear el orden correcto
+      const correctOrder = selectedVerses.map((_, idx) => idx);
+      
+      // Desordenar los versos
+      const shuffledVerses = [...selectedVerses].sort(() => Math.random() - 0.5);
+      
+      questions.push({
+        verses: shuffledVerses,
+        correctOrder: correctOrder,
+        totalVerses: selectedVerses.length
+      });
+    }
+  }
+  
+  // Asegurar que tengamos al menos 3 rondas
+  while (questions.length < 3 && questions.length < allVerses.length - 3) {
+    const startIdx = Math.floor(Math.random() * (allVerses.length - 3));
+    const selectedVerses = allVerses.slice(startIdx, startIdx + 4);
+    
+    questions.push({
+      verses: [...selectedVerses].sort(() => Math.random() - 0.5),
+      correctOrder: [0, 1, 2, 3],
+      totalVerses: 4
+    });
+  }
+  
+  console.log(`✅ Rondas de ordenamiento creadas: ${questions.length}`);
+  return questions;
+}

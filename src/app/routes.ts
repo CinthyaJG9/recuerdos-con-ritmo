@@ -11,6 +11,7 @@ import { ArtistQuizResults } from './pages/ArtistQuizResults';
 import { ProverbsInstructions } from './pages/ProverbsInstructions';
 import { ProverbsPlay } from './pages/ProverbsPlay';
 import { ProverbsResults } from './pages/ProverbsResults';
+import { OrderGame } from './pages/OrderGame';
 
 export const router = createBrowserRouter([
   {
@@ -30,8 +31,12 @@ export const router = createBrowserRouter([
     Component: GameTypeSelection,
   },
   {
-    path: '/game/:songId/:gameType',
+    path: '/game/:songId/complete',  // CORREGIDO: con slash
     Component: CompleteLyrics,
+  },
+  {
+    path: '/game/:songId/order',  // NUEVA RUTA para OrderGame
+    Component: OrderGame,
   },
   {
     path: '/summary',
@@ -61,8 +66,5 @@ export const router = createBrowserRouter([
     path: '/proverbs/results',
     Component: ProverbsResults,
   },
-  {
-    path: 'game:songId/complete',
-    Component: CompleteLyrics,
-  }
+
 ]);

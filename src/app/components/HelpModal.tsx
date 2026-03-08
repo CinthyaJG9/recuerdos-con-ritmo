@@ -106,3 +106,4 @@ export function HelpModal({ isOpen, onClose, gameType = 'complete' }: HelpModalP
     </div>
   );
 }
+  
