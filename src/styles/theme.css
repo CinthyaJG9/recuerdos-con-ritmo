@@ -1,0 +1,184 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 20px;
+  
+  /* Nueva paleta cálida y emocional - evita colores institucionales */
+  /* Tonos principales */
+  --peach: #ffcba8;
+  --peach-dark: #f5b899;
+  --peach-light: #ffe5d109;
+  --coral: #ff9a7c;
+  --coral-dark: #e88568;
+  --coral-light: #ffb39a16;
+  --sky-blue: #a8d5e8;
+  --sky-blue-dark: #8fc4db;
+  --sky-blue-light: #c5e5f351;  
+  --lavender: #c9b8e0;
+  --lavender-dark: #b5a1d3;
+  --lavender-light: #ddd1ed00;
+  --warm-beige: #f9f3ec;
+  --warm-beige-dark: #f0e8dc;
+  --cream: #fffbf5;
+  --ivory: #faf6f0;
+  
+  /* Colores de texto y neutros */
+  --warm-black: #3a3530;
+  --warm-gray: #736b64;
+  --warm-gray-light: #a89f9700;
+  
+  /* Colores de feedback amigables */
+  --success-green: #9bc995;
+  --success-green-dark: #88b782;
+  --error-coral: #ff9a7c;
+  --error-coral-dark: #e88568;
+  
+  /* Mapeo semántico */
+  --background: var(--ivory);
+  --foreground: var(--warm-black);
+  --card: var(--cream);
+  --card-foreground: var(--warm-black);
+  --popover: var(--cream);
+  --popover-foreground: var(--warm-black);
+  --primary: var(--coral);
+  --primary-foreground: white;
+  --secondary: var(--lavender);
+  --secondary-foreground: white;
+  --muted: var(--warm-beige);
+  --muted-foreground: var(--warm-gray);
+  --accent: var(--sky-blue);
+  --accent-foreground: var(--warm-black);
+  --destructive: var(--error-coral);
+  --destructive-foreground: white;
+  --border: rgba(58, 53, 48, 0.12);
+  --input: transparent;
+  --input-background: var(--cream);
+  --switch-background: var(--warm-gray-light);
+  --font-weight-medium: 600;
+  --font-weight-normal: 400;
+  --ring: var(--coral);
+  --radius: 1rem;
+  
+  /* Tamaños de texto aumentados para accesibilidad */
+  --text-base: 20px;
+  --text-lg: 22px;
+  --text-xl: 26px;
+  --text-2xl: 32px;
+  --text-3xl: 40px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  
+  /* Colores personalizados disponibles en Tailwind */
+  --color-peach: var(--peach);
+  --color-peach-dark: var(--peach-dark);
+  --color-peach-light: var(--peach-light);
+  --color-coral: var(--coral);
+  --color-coral-dark: var(--coral-dark);
+  --color-coral-light: var(--coral-light);
+  --color-sky-blue: var(--sky-blue);
+  --color-sky-blue-dark: var(--sky-blue-dark);
+  --color-sky-blue-light: var(--sky-blue-light);
+  --color-lavender: var(--lavender);
+  --color-lavender-dark: var(--lavender-dark);
+  --color-lavender-light: var(--lavender-light);
+  --color-warm-beige: var(--warm-beige);
+  --color-warm-beige-dark: var(--warm-beige-dark);
+  --color-cream: var(--cream);
+  --color-ivory: var(--ivory);
+  --color-warm-black: var(--warm-black);
+  --color-warm-gray: var(--warm-gray);
+  --color-warm-gray-light: var(--warm-gray-light);
+  --color-success-green: var(--success-green);
+  --color-success-green-dark: var(--success-green-dark);
+  --color-error-coral: var(--error-coral);
+  --color-error-coral-dark: var(--error-coral-dark);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1 {
+    font-size: var(--text-3xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.4;
+  }
+
+  h2 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.4;
+  }
+
+  h3 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.4;
+  }
+
+  h4 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.4;
+  }
+
+  p {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.6;
+  }
+
+  label {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+}
