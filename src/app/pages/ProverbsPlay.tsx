@@ -18,6 +18,7 @@ export function ProverbsPlay() {
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [timeLeft, setTimeLeft] = useState(3);
 
   // Cargar refranes aleatorios al iniciar
   useEffect(() => {
@@ -25,6 +26,33 @@ export function ProverbsPlay() {
     setProverbs(randomProverbs);
     setIsLoading(false);
   }, []);
+
+  // Temporizador para avanzar automáticamente
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval>;
+
+    if (showFeedback) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            handleContinue();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [showFeedback]);
+
+  // Resetear temporizador al cambiar de pregunta
+  useEffect(() => {
+    setTimeLeft(3);
+  }, [currentQuestion]);
 
   const proverb = proverbs[currentQuestion];
   const isLastQuestion = currentQuestion === proverbs.length - 1;
@@ -194,12 +222,30 @@ export function ProverbsPlay() {
               </div>
             </div>
             
-            <div className="flex justify-center">
+            <div className="max-w-md mx-auto mt-8">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-lg text-amber-600">
+                  {isLastQuestion ? 'Resultados en...' : 'Siguiente refrán en...'}
+                </span>
+                <span className="text-2xl font-bold text-amber-800">
+                  {timeLeft}s
+                </span>
+              </div>
+
+              <div className="w-full h-3 bg-amber-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-1000 ${
+                    isCorrect ? 'bg-green-500' : 'bg-amber-500'
+                  }`}
+                  style={{ width: `${(timeLeft / 3) * 100}%` }}
+                />
+              </div>
+
               <button
                 onClick={handleContinue}
-                className="px-10 py-5 bg-amber-600 hover:bg-amber-700 text-white text-2xl font-bold rounded-xl shadow-lg hover:shadow-xl transition-all"
+                className="mt-6 px-8 py-4 bg-amber-600 hover:bg-amber-700 text-white text-xl font-bold rounded-xl shadow-lg w-full"
               >
-                {isLastQuestion ? 'Ver resultados' : 'Siguiente refrán'}
+                {isLastQuestion ? 'Ver resultados ahora' : 'Continuar ahora'}
               </button>
             </div>
             
