@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Lightbulb, CheckCircle, XCircle, Mic, Home, Volume2, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Lightbulb, CheckCircle, XCircle, Mic, Home, Volume2, HelpCircle, Hand } from 'lucide-react';
 
 export function CompleteLyrics() {
   const navigate = useNavigate();
@@ -16,7 +16,8 @@ export function CompleteLyrics() {
   const [isCorrect, setIsCorrect] = useState(false);
   const [timeLeft, setTimeLeft] = useState(3);
 
-  const [useVoiceMode, setUseVoiceMode] = useState(true);
+  // CAMBIO IMPORTANTE: El modo táctil es el principal
+  const [voiceModeActive, setVoiceModeActive] = useState(false);
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
@@ -78,6 +79,10 @@ export function CompleteLyrics() {
 
   useEffect(() => {
     setTimeLeft(3);
+    // Resetear modo voz al cambiar de pregunta
+    setVoiceModeActive(false);
+    setVoiceError(null);
+    setListening(false);
   }, [currentQuestion]);
 
   if (!isValid) {
@@ -102,6 +107,12 @@ export function CompleteLyrics() {
     setSelectedAnswer(answer);
     setShowFeedback(true);
     setAnswers([...answers, { correct, answer }]);
+    
+    // Desactivar modo voz si estaba activo
+    if (listening) {
+      stopVoiceRecognition();
+    }
+    setVoiceModeActive(false);
   };
 
   const handleContinue = () => {
@@ -122,7 +133,7 @@ export function CompleteLyrics() {
       setShowHint(false);
       setShowFeedback(false);
       setIsCorrect(false);
-      setUseVoiceMode(true);
+      setVoiceModeActive(false);
       setVoiceError(null);
     }
   };
@@ -144,6 +155,7 @@ export function CompleteLyrics() {
 
     setListening(true);
     setVoiceError(null);
+    setVoiceModeActive(true);
 
     recognition.onstart = () => {
       console.log("Reconocimiento de voz iniciado");
@@ -160,12 +172,10 @@ export function CompleteLyrics() {
       currentLyric.options.forEach((option: string) => {
         const normalizedOption = normalizeText(option);
         
-        // Verificar coincidencia exacta
         if (normalizedTranscript.includes(normalizedOption)) {
           matchedOption = option;
           bestMatchScore = 1;
         } else {
-          // Verificar similitud
           const score = similarity(transcript, option);
           if (score > 0.6 && score > bestMatchScore) {
             matchedOption = option;
@@ -178,7 +188,7 @@ export function CompleteLyrics() {
         recognition.stop();
         handleAnswerSelect(matchedOption);
       } else {
-        setVoiceError(`No entendí bien. Dime una de las opciones.`);
+        setVoiceError(`No entendí bien. Puedes repetir o usar los botones.`);
         setListening(false);
       }
     };
@@ -210,8 +220,15 @@ export function CompleteLyrics() {
     }
   };
 
-  const cancelVoiceMode = () => {
-    setUseVoiceMode(false);
+  const stopVoiceRecognition = () => {
+    if (window.SpeechRecognition || (window as any).webkitSpeechRecognition) {
+      // No podemos detener directamente, pero cambiamos el estado
+    }
+    setListening(false);
+  };
+
+  const deactivateVoiceMode = () => {
+    setVoiceModeActive(false);
     setVoiceError(null);
     setListening(false);
   };
@@ -349,11 +366,19 @@ export function CompleteLyrics() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-30 p-4">
             <div className="bg-white rounded-3xl p-8 max-w-md shadow-2xl">
               <h3 className="text-2xl font-bold text-amber-900 mb-4">Cómo jugar:</h3>
-              <ul className="space-y-3 text-lg text-amber-700">
-                <li className="flex gap-2">🎤 <span>Presiona el botón del micrófono para responder con voz</span></li>
-                <li className="flex gap-2"> <span>Habla claramente una de las opciones</span></li>
-                <li className="flex gap-2"> <span>Si no puedes hablar, desactiva el modo voz</span></li>
-                <li className="flex gap-2"> <span>Usa la pista si necesitas ayuda</span></li>
+              <ul className="space-y-4 text-lg text-amber-700">
+                <li className="flex items-center gap-3">
+                  <span className="w-8 h-8 bg-amber-200 rounded-full flex items-center justify-center text-xl">👆</span>
+                  <span>Toca la respuesta correcta en la pantalla</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="w-8 h-8 bg-amber-200 rounded-full flex items-center justify-center">🎤</span>
+                  <span>Opcional: usa el micrófono si prefieres hablar</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="w-8 h-8 bg-amber-200 rounded-full flex items-center justify-center">💡</span>
+                  <span>Usa la pista si necesitas ayuda</span>
+                </li>
               </ul>
               <button
                 onClick={toggleInstructions}
@@ -389,18 +414,13 @@ export function CompleteLyrics() {
           </div>
         )}
 
-        {/* Opciones de respuesta */}
+        {/* Opciones de respuesta - SIEMPRE HABILITADAS (cambio principal) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {currentLyric.options.map((option: string, index: number) => (
             <button
               key={index}
-              disabled={useVoiceMode}
               onClick={() => handleAnswerSelect(option)}
-              className={`bg-white rounded-xl p-6 shadow-md border-2 transition-all ${
-                useVoiceMode
-                  ? "opacity-60 cursor-not-allowed border-gray-200"
-                  : "border-amber-200 hover:border-amber-400 hover:bg-amber-50 active:scale-95"
-              }`}
+              className="bg-white rounded-xl p-6 shadow-md border-2 border-amber-200 hover:border-amber-400 hover:bg-amber-50 active:scale-95 transition-all"
             >
               <p className="text-xl text-amber-900 font-medium">
                 {option}
@@ -409,65 +429,75 @@ export function CompleteLyrics() {
           ))}
         </div>
 
-        {/* Área de voz */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="relative mb-3">
-            {listening && (
-              <>
-                <span className="absolute inset-0 rounded-full bg-orange-300 animate-ping opacity-70"></span>
-                <span className="absolute inset-0 rounded-full bg-orange-400 animate-pulse opacity-50"></span>
-              </>
+        {/* Área de voz como OPCIÓN SECUNDARIA */}
+        <div className="bg-amber-50 rounded-2xl p-6 mb-8 border border-amber-200">
+          <div className="flex flex-col items-center">
+            
+            {/* Indicador de modo activo */}
+            {voiceModeActive && (
+              <div className="w-full mb-4 p-2 bg-orange-100 rounded-xl text-center">
+                <p className="text-orange-700 font-medium">
+                  Modo voz activado - Habla claramente
+                </p>
+              </div>
             )}
 
-            <button
-              onClick={startVoiceRecognition}
-              disabled={!useVoiceMode || listening}
-              className={`relative w-24 h-24 rounded-full flex items-center justify-center shadow-xl transition-all ${
-                !useVoiceMode
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : listening
-                  ? "bg-orange-400 scale-110"
-                  : "bg-orange-500 hover:bg-orange-600 hover:scale-105"
-              }`}
-              aria-label="Responder con voz"
-            >
-              <Mic className="w-10 h-10 text-white" />
-            </button>
-          </div>
+            <div className="flex items-center gap-6">
+              {/* Botón de micrófono */}
+              <div className="relative">
+                {listening && (
+                  <>
+                    <span className="absolute inset-0 rounded-full bg-orange-300 animate-ping opacity-70"></span>
+                    <span className="absolute inset-0 rounded-full bg-orange-400 animate-pulse opacity-50"></span>
+                  </>
+                )}
 
-          {/* Mensaje de estado de voz */}
-          <div className="text-center">
-            {listening ? (
-              <p className="text-xl text-orange-600 font-medium animate-pulse">
-                 Escuchando... habla claramente
+                <button
+                  onClick={voiceModeActive ? stopVoiceRecognition : startVoiceRecognition}
+                  className={`relative w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-all ${
+                    listening
+                      ? "bg-orange-400 scale-110"
+                      : voiceModeActive
+                      ? "bg-orange-500"
+                      : "bg-gray-400 hover:bg-gray-500"
+                  }`}
+                  aria-label="Responder con voz"
+                >
+                  <Mic className="w-8 h-8 text-white" />
+                </button>
+              </div>
+
+              {/* Texto explicativo */}
+              <div className="flex-1 text-left">
+                <p className="text-lg text-amber-800 font-medium">
+                  ¿Prefieres hablar?
+                </p>
+                <p className="text-base text-amber-600">
+                  Presiona el micrófono para responder con voz
+                </p>
+              </div>
+            </div>
+
+            {/* Mensajes de estado */}
+            {listening && (
+              <p className="mt-4 text-lg text-orange-600 animate-pulse">
+                🎤 Escuchando... habla claramente
               </p>
-            ) : voiceError ? (
-              <p className="text-lg text-red-600">
+            )}
+            
+            {voiceError && (
+              <p className="mt-4 text-lg text-red-600">
                 {voiceError}
               </p>
-            ) : useVoiceMode ? (
-              <p className="text-lg text-amber-700">
-                Presiona el micrófono y di una opción
-              </p>
-            ) : null}
-          </div>
+            )}
 
-          {/* Controles de modo */}
-          <div className="flex gap-4 mt-4">
-            {useVoiceMode ? (
+            {/* Botón para desactivar modo voz */}
+            {voiceModeActive && !listening && !voiceError && (
               <button
-                onClick={cancelVoiceMode}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-lg rounded-xl transition-colors"
+                onClick={deactivateVoiceMode}
+                className="mt-4 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl"
               >
-                Prefiero usar botones
-              </button>
-            ) : (
-              <button
-                onClick={() => setUseVoiceMode(true)}
-                className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 text-lg rounded-xl transition-colors flex items-center gap-2"
-              >
-                <Mic className="w-5 h-5" />
-                Activar modo voz
+                Desactivar modo voz
               </button>
             )}
           </div>
