@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lightbulb, Home, Mic, HelpCircle, Volume2, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
+import { 
+  Lightbulb, Home, Mic, HelpCircle, Volume2, 
+  CheckCircle, XCircle, ArrowLeft, VolumeX 
+} from 'lucide-react';
 import { getRandomProverbs } from '../data/proverbsService';
 import { ProgressIndicator } from '../components/ProgressIndicator';
 
-export function ProverbsPlay() {
+export function ProverbsPlay() {  
   const navigate = useNavigate();
 
   const [proverbs, setProverbs] = useState<any[]>([]);
@@ -13,9 +16,12 @@ export function ProverbsPlay() {
   const [showHint, setShowHint] = useState(false);
   const [answers, setAnswers] = useState<{ correct: boolean }[]>([]);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [useVoiceMode, setUseVoiceMode] = useState(true);
+  
+  // Estados para modo voz (DESACTIVADO POR DEFECTO)
+  const [voiceModeActive, setVoiceModeActive] = useState(false);
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  
   const [showInstructions, setShowInstructions] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(3);
@@ -77,7 +83,7 @@ export function ProverbsPlay() {
   const handleAnswerSelect = (answer: string) => {
     const isCorrect = answer === proverb.correctEnding;
     
-    console.log('🔍 Verificando:', {
+    console.log('Verificando:', {
       seleccionada: answer,
       correcta: proverb.correctEnding,
       esCorrecta: isCorrect
@@ -102,8 +108,9 @@ export function ProverbsPlay() {
       setSelectedAnswer(null);
       setShowHint(false);
       setShowFeedback(false);
-      setUseVoiceMode(true);
+      setVoiceModeActive(false);
       setVoiceError(null);
+      setListening(false);
     }
   };
 
@@ -118,32 +125,35 @@ export function ProverbsPlay() {
 
     const recognition = new SpeechRecognition();
     recognition.lang = "es-ES";
-    recognition.interimResults = false;
+    recognition.interimResults = true;
+    recognition.continuous = true;
 
     setListening(true);
     setVoiceError(null);
+    setVoiceModeActive(true);
 
     recognition.onresult = (event: any) => {
-      const transcript = normalizeText(event.results[0][0].transcript);
-      let matchedOption: string | null = null;
+      const lastResult = event.results[event.results.length - 1];
+      const transcript = normalizeText(lastResult[0].transcript);
+      
+      if (lastResult.isFinal) {
+        let matchedOption: string | null = null;
 
-      proverb.options.forEach((option: string) => {
-        const normalizedOption = normalizeText(option);
-        if (
-          transcript.includes(normalizedOption) ||
-          normalizedOption.includes(transcript) ||
-          similarity(transcript, normalizedOption) > 0.6
-        ) {
-          matchedOption = option;
+        proverb.options.forEach((option: string) => {
+          const normalizedOption = normalizeText(option);
+          if (
+            transcript.includes(normalizedOption) ||
+            normalizedOption.includes(transcript) ||
+            similarity(transcript, normalizedOption) > 0.6
+          ) {
+            matchedOption = option;
+          }
+        });
+
+        if (matchedOption) {
+          recognition.stop();
+          handleAnswerSelect(matchedOption);
         }
-      });
-
-      if (matchedOption) {
-        recognition.stop();
-        handleAnswerSelect(matchedOption);
-      } else {
-        setVoiceError("No entendí bien. Intenta decir una de las opciones.");
-        setListening(false);
       }
     };
 
@@ -161,6 +171,20 @@ export function ProverbsPlay() {
     };
 
     recognition.start();
+  };
+
+  const stopVoiceRecognition = () => {
+    setListening(false);
+  };
+
+  const toggleVoiceMode = () => {
+    if (voiceModeActive) {
+      stopVoiceRecognition();
+      setVoiceModeActive(false);
+    } else {
+      setVoiceModeActive(true);
+      startVoiceRecognition();
+    }
   };
 
   const toggleInstructions = () => {
@@ -271,27 +295,22 @@ export function ProverbsPlay() {
       {showInstructions && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-30 p-4">
           <div className="bg-white rounded-3xl p-8 max-w-md shadow-2xl">
-            <h3 className="text-2xl font-bold text-amber-900 mb-4">✨ Cómo jugar:</h3>
+            <h3 className="text-2xl font-bold text-amber-900 mb-4">Cómo jugar:</h3>
             
             <div className="space-y-4 text-lg">
               <div className="flex gap-3 items-start">
-                <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">🎤</div>
-                <p className="text-amber-700">Presiona el micrófono para responder con voz</p>
+                <span className="w-8 h-8 bg-amber-200 rounded-full flex items-center justify-center text-xl">👆</span>
+                <p className="text-amber-700">Toca la respuesta correcta en la pantalla</p>
               </div>
               
               <div className="flex gap-3 items-start">
-                <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">🗣️</div>
-                <p className="text-amber-700">Habla claramente una de las opciones</p>
+                <span className="w-8 h-8 bg-amber-200 rounded-full flex items-center justify-center">🎤</span>
+                <p className="text-amber-700">Opcional: activa el micrófono para hablar</p>
               </div>
               
               <div className="flex gap-3 items-start">
-                <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">💡</div>
+                <span className="w-8 h-8 bg-amber-200 rounded-full flex items-center justify-center">💡</span>
                 <p className="text-amber-700">Usa la pista si necesitas ayuda</p>
-              </div>
-              
-              <div className="flex gap-3 items-start">
-                <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">✋</div>
-                <p className="text-amber-700">Si no puedes hablar, usa los botones</p>
               </div>
             </div>
             
@@ -329,7 +348,7 @@ export function ProverbsPlay() {
             </div>
           </div>
           
-          {/* Barra de progreso personalizada */}
+          {/* Barra de progreso */}
           <div className="w-full h-3 bg-amber-100 rounded-full mt-3 overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300"
@@ -368,83 +387,111 @@ export function ProverbsPlay() {
           </div>
         )}
 
-        {/* Opciones de respuesta */}
+        {/* Opciones de respuesta - SIEMPRE HABILITADAS */}
         <div className="space-y-3 mb-8">
           {proverb.options.map((option: string, index: number) => (
             <button
               key={index}
-              disabled={useVoiceMode}
               onClick={() => handleAnswerSelect(option)}
-              className={`w-full bg-white rounded-xl p-5 shadow-md border-2 transition-all text-left ${
-                useVoiceMode
-                  ? "opacity-50 cursor-not-allowed border-gray-200"
-                  : "border-amber-200 hover:border-amber-400 hover:bg-amber-50 active:scale-[0.99] hover:shadow-lg"
-              }`}
+              className="w-full bg-white rounded-xl p-5 shadow-md border-2 border-amber-200 hover:border-amber-400 hover:bg-amber-50 active:scale-[0.99] hover:shadow-lg transition-all text-left"
             >
               <p className="text-xl text-amber-900">{option}</p>
             </button>
           ))}
         </div>
 
-        {/* Área de voz */}
-        <div className="flex flex-col items-center mb-8 p-6 bg-white rounded-2xl shadow-md border border-amber-200">
-          
-          <div className="relative mb-4">
-            {listening && (
-              <>
-                <span className="absolute inset-0 rounded-full bg-orange-300 animate-ping opacity-70"></span>
-                <span className="absolute inset-0 rounded-full bg-orange-400 animate-pulse opacity-50"></span>
-              </>
-            )}
+        {/* Área de voz como OPCIÓN SECUNDARIA */}
+        <div className={`rounded-2xl p-6 mb-8 border-2 transition-all ${
+          voiceModeActive 
+            ? 'bg-green-50 border-green-400 shadow-lg' 
+            : 'bg-purple-50 border-purple-200'
+        }`}>
+          <div className="flex flex-col items-center">
             
-            <button
-              onClick={startVoiceRecognition}
-              className={`relative w-24 h-24 rounded-full flex items-center justify-center shadow-xl transition-all ${
-                listening
-                  ? "bg-orange-400 scale-110"
-                  : "bg-orange-500 hover:bg-orange-600 hover:scale-105"
-              }`}
-              aria-label="Responder con voz"
-            >
-              <Mic className="w-10 h-10 text-white" />
-            </button>
-          </div>
-          
-          <div className="text-center">
-            <p className={`text-xl font-medium mb-2 ${
-              listening ? 'text-orange-600' : voiceError ? 'text-red-600' : 'text-amber-700'
-            }`}>
-              {listening ? "Escuchando... habla claro" : 
-               voiceError || "Responde con voz o elige una opción"}
-            </p>
-            
-            {listening && (
-              <p className="text-lg text-amber-500 animate-pulse">
-                Di una de las opciones en voz alta
-              </p>
-            )}
-          </div>
+            {/* Indicador de estado */}
+            <div className="w-full mb-4">
+              <div className="flex items-center justify-center gap-3">
+                {voiceModeActive ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
+                    <p className="text-xl font-bold text-green-700">MICRÓFONO ACTIVADO</p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
+                    <p className="text-xl font-bold text-purple-700">MODO TÁCTIL</p>
+                  </div>
+                )}
+              </div>
+              
+              {voiceModeActive && listening && (
+                <div className="flex items-center justify-center gap-2 mt-3">
+                  <Volume2 className="w-6 h-6 text-green-600 animate-pulse" />
+                  <span className="text-lg text-green-600 font-medium">Escuchando... puedes hablar</span>
+                </div>
+              )}
+              
+              {voiceModeActive && !listening && !voiceError && (
+                <p className="text-center text-green-600 mt-2">Preparando micrófono...</p>
+              )}
+            </div>
 
-          {/* Botones para cambiar modo */}
-          <div className="flex gap-4 mt-4">
-            {useVoiceMode ? (
-              <button
-                onClick={() => setUseVoiceMode(false)}
-                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 text-lg font-medium rounded-xl transition-all"
-              >
-                Usar botones
-              </button>
-            ) : (
-              <button
-                onClick={() => setUseVoiceMode(true)}
-                className="px-6 py-3 bg-orange-100 hover:bg-orange-200 text-orange-800 text-lg font-medium rounded-xl transition-all flex items-center gap-2"
-              >
-                <Mic className="w-5 h-5" />
-                Activar voz
-              </button>
+            <div className="flex items-center gap-8">
+              {/* Botón de micrófono */}
+              <div className="relative">
+                {voiceModeActive && listening && (
+                  <>
+                    <span className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-70"></span>
+                    <span className="absolute inset-0 rounded-full bg-green-500 animate-pulse opacity-50"></span>
+                  </>
+                )}
+
+                <button
+                  onClick={toggleVoiceMode}
+                  className={`relative w-28 h-28 rounded-full flex items-center justify-center shadow-xl transition-all ${
+                    voiceModeActive
+                      ? listening
+                        ? "bg-green-500 scale-110 ring-4 ring-green-300"
+                        : "bg-green-500 hover:bg-green-600"
+                      : "bg-purple-500 hover:bg-purple-600"
+                  }`}
+                  aria-label={voiceModeActive ? "Desactivar micrófono" : "Activar micrófono"}
+                >
+                  <Mic className="w-12 h-12 text-white" />
+                </button>
+              </div>
+
+              {/* Texto explicativo */}
+              <div className="flex-1 text-left">
+                {voiceModeActive ? (
+                  <>
+                    <p className="text-xl font-bold text-green-700">¡Micrófono activo!</p>
+                    <p className="text-lg text-green-600">Di una opción para seleccionarla</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xl font-bold text-purple-700">Modo táctil</p>
+                    <p className="text-lg text-purple-600">Toca la respuesta con el dedo</p>
+                    <button
+                      onClick={toggleVoiceMode}
+                      className="mt-3 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-all"
+                    >
+                      Activar micrófono
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Mensajes de error */}
+            {voiceError && (
+              <div className="mt-4 p-4 bg-red-100 rounded-xl border-2 border-red-300 w-full">
+                <p className="text-lg text-red-700 text-center">
+                  {voiceError}
+                </p>
+              </div>
             )}
           </div>
-          
         </div>
 
         {/* Botón pista */}

@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Lightbulb, CheckCircle, XCircle, Mic, Home, Volume2, HelpCircle, Hand } from 'lucide-react';
+import { 
+  ArrowLeft, Lightbulb, CheckCircle, XCircle, Mic, 
+  Home, HelpCircle, Sparkles, Loader2, Volume2
+} from 'lucide-react';
+import { hintService } from '../data/hintService';
 
 export function CompleteLyrics() {
   const navigate = useNavigate();
@@ -16,11 +20,16 @@ export function CompleteLyrics() {
   const [isCorrect, setIsCorrect] = useState(false);
   const [timeLeft, setTimeLeft] = useState(3);
 
-  // CAMBIO IMPORTANTE: El modo táctil es el principal
+  // Estados para modo voz (DESACTIVADO POR DEFECTO)
   const [voiceModeActive, setVoiceModeActive] = useState(false);
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
+
+  // Estados para pistas con IA
+  const [aiHint, setAiHint] = useState<string | null>(null);
+  const [isGeneratingHint, setIsGeneratingHint] = useState(false);
+  const [hintCache, setHintCache] = useState<Record<string, string>>({});
 
   const normalizeText = (text: string) => {
     return text
@@ -79,11 +88,57 @@ export function CompleteLyrics() {
 
   useEffect(() => {
     setTimeLeft(3);
-    // Resetear modo voz al cambiar de pregunta
     setVoiceModeActive(false);
     setVoiceError(null);
     setListening(false);
+    setAiHint(null);
+    setShowHint(false);
   }, [currentQuestion]);
+
+  // ============================================
+  // PRECARGADO DE PISTAS
+  // ============================================
+  useEffect(() => {
+    const preloadHints = async () => {
+      if (!isValid || !currentLyric) return;
+      
+      const currentKey = `${track.title}-${currentLyric.missing}`;
+      if (!hintCache[currentKey]) {
+        console.log(`Precargando pista para pregunta actual: "${currentLyric.missing}"`);
+        try {
+          const res = await hintService.getCompleteLyricsHint(
+            track.title, 
+            track.artist, 
+            currentLyric.missing, 
+            currentLyric.options
+          );
+          setHintCache(prev => ({ ...prev, [currentKey]: res.hint }));
+        } catch (error) {
+          console.error('Error precargando pista actual:', error);
+        }
+      }
+
+      if (currentQuestion < questions.length - 1) {
+        const nextLyric = questions[currentQuestion + 1];
+        const nextKey = `${track.title}-${nextLyric.missing}`;
+        if (!hintCache[nextKey]) {
+          console.log(`Precargando pista para siguiente pregunta: "${nextLyric.missing}"`);
+          hintService.getCompleteLyricsHint(
+            track.title, 
+            track.artist, 
+            nextLyric.missing, 
+            nextLyric.options
+          ).then(res => {
+            setHintCache(prev => ({ ...prev, [nextKey]: res.hint }));
+          }).catch(error => {
+            console.error('Error precargando siguiente pista:', error);
+          });
+        }
+      }
+    };
+
+    if (isValid) preloadHints();
+  }, [currentQuestion, isValid]);
 
   if (!isValid) {
     return (
@@ -108,7 +163,6 @@ export function CompleteLyrics() {
     setShowFeedback(true);
     setAnswers([...answers, { correct, answer }]);
     
-    // Desactivar modo voz si estaba activo
     if (listening) {
       stopVoiceRecognition();
     }
@@ -135,6 +189,51 @@ export function CompleteLyrics() {
       setIsCorrect(false);
       setVoiceModeActive(false);
       setVoiceError(null);
+      setAiHint(null);
+    }
+  };
+
+  // Función para generar pista con IA (con caché)
+  const generateAIHint = async () => {
+    if (!currentLyric) return;
+    
+    const cacheKey = `${track.title}-${currentLyric.missing}`;
+    
+    if (hintCache[cacheKey]) {
+      console.log('Usando pista precargada');
+      setAiHint(hintCache[cacheKey]);
+      setShowHint(true);
+      return;
+    }
+    
+    setIsGeneratingHint(true);
+    
+    try {
+      const response = await hintService.getCompleteLyricsHint(
+        track.title,
+        track.artist,
+        currentLyric.missing,
+        currentLyric.options
+      );
+      
+      setHintCache(prev => ({ ...prev, [cacheKey]: response.hint }));
+      setAiHint(response.hint);
+      setShowHint(true);
+    } catch (error) {
+      console.error('Error generando pista con IA:', error);
+      
+      const fallbackHints = [
+        "Escucha la canción en tu mente...",
+        "Recuerda el contexto de la canción",
+        "¿Qué palabra encaja mejor aquí?",
+        "Canta mentalmente la frase",
+        "Piensa en el significado de la letra"
+      ];
+      const fallbackHint = fallbackHints[Math.floor(Math.random() * fallbackHints.length)];
+      setAiHint(fallbackHint);
+      setShowHint(true);
+    } finally {
+      setIsGeneratingHint(false);
     }
   };
 
@@ -149,20 +248,16 @@ export function CompleteLyrics() {
 
     const recognition = new SpeechRecognition();
     recognition.lang = "es-ES";
-    recognition.interimResults = false;
-    recognition.continuous = false;
-    recognition.maxAlternatives = 1;
+    recognition.interimResults = true;
+    recognition.continuous = true;
 
     setListening(true);
     setVoiceError(null);
     setVoiceModeActive(true);
 
-    recognition.onstart = () => {
-      console.log("Reconocimiento de voz iniciado");
-    };
-
     recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
+      const lastResult = event.results[event.results.length - 1];
+      const transcript = lastResult[0].transcript;
       console.log("Escuché:", transcript);
 
       const normalizedTranscript = normalizeText(transcript);
@@ -187,23 +282,17 @@ export function CompleteLyrics() {
       if (matchedOption) {
         recognition.stop();
         handleAnswerSelect(matchedOption);
-      } else {
-        setVoiceError(`No entendí bien. Puedes repetir o usar los botones.`);
-        setListening(false);
       }
     };
 
     recognition.onerror = (event: any) => {
       console.error("Error de voz:", event.error);
       
-      let errorMessage = "Error al usar el micrófono";
       if (event.error === "not-allowed") {
-        errorMessage = "Permiso denegado. Activa el micrófono.";
-      } else if (event.error === "no-speech") {
-        errorMessage = "No escuché nada. Intenta de nuevo.";
+        setVoiceError("Permiso denegado. Activa el micrófono.");
+      } else {
+        setVoiceError("Error con el micrófono. Intenta de nuevo.");
       }
-      
-      setVoiceError(errorMessage);
       setListening(false);
     };
 
@@ -221,16 +310,17 @@ export function CompleteLyrics() {
   };
 
   const stopVoiceRecognition = () => {
-    if (window.SpeechRecognition || (window as any).webkitSpeechRecognition) {
-      // No podemos detener directamente, pero cambiamos el estado
-    }
     setListening(false);
   };
 
-  const deactivateVoiceMode = () => {
-    setVoiceModeActive(false);
-    setVoiceError(null);
-    setListening(false);
+  const toggleVoiceMode = () => {
+    if (voiceModeActive) {
+      stopVoiceRecognition();
+      setVoiceModeActive(false);
+    } else {
+      setVoiceModeActive(true);
+      startVoiceRecognition();
+    }
   };
 
   const toggleInstructions = () => {
@@ -397,24 +487,24 @@ export function CompleteLyrics() {
           </p>
         </div>
 
-        {/* Pista */}
-        {showHint && currentLyric.hint && (
-          <div className="bg-blue-50 rounded-xl p-5 mb-6 border-2 border-blue-200">
+        {/* Pista con IA */}
+        {showHint && aiHint && (
+          <div className="bg-purple-50 rounded-xl p-5 mb-6 border-2 border-purple-200">
             <div className="flex gap-3 items-start">
-              <Lightbulb className="w-7 h-7 text-blue-600 flex-shrink-0 mt-1" />
+              <Sparkles className="w-7 h-7 text-purple-600 flex-shrink-0 mt-1" />
               <div>
-                <p className="text-lg font-bold text-blue-800 mb-1">
-                  Pista:
+                <p className="text-lg font-bold text-purple-800 mb-1">
+                  Pista especial:
                 </p>
-                <p className="text-xl text-blue-700">
-                  {currentLyric.hint}
+                <p className="text-xl text-purple-700">
+                  {aiHint}
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Opciones de respuesta - SIEMPRE HABILITADAS (cambio principal) */}
+        {/* Opciones de respuesta - SIEMPRE HABILITADAS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {currentLyric.options.map((option: string, index: number) => (
             <button
@@ -430,88 +520,118 @@ export function CompleteLyrics() {
         </div>
 
         {/* Área de voz como OPCIÓN SECUNDARIA */}
-        <div className="bg-amber-50 rounded-2xl p-6 mb-8 border border-amber-200">
+        <div className={`rounded-2xl p-6 mb-8 border-2 transition-all ${
+          voiceModeActive 
+            ? 'bg-green-50 border-green-400 shadow-lg' 
+            : 'bg-purple-50 border-purple-200'
+        }`}>
           <div className="flex flex-col items-center">
             
-            {/* Indicador de modo activo */}
-            {voiceModeActive && (
-              <div className="w-full mb-4 p-2 bg-orange-100 rounded-xl text-center">
-                <p className="text-orange-700 font-medium">
-                  Modo voz activado - Habla claramente
-                </p>
+            {/* Indicador de estado */}
+            <div className="w-full mb-4">
+              <div className="flex items-center justify-center gap-3">
+                {voiceModeActive ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
+                    <p className="text-xl font-bold text-green-700">MICRÓFONO ACTIVADO</p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
+                    <p className="text-xl font-bold text-purple-700">MODO TÁCTIL</p>
+                  </div>
+                )}
               </div>
-            )}
+              
+              {voiceModeActive && listening && (
+                <div className="flex items-center justify-center gap-2 mt-3">
+                  <Volume2 className="w-6 h-6 text-green-600 animate-pulse" />
+                  <span className="text-lg text-green-600 font-medium">Escuchando... puedes hablar</span>
+                </div>
+              )}
+              
+              {voiceModeActive && !listening && !voiceError && (
+                <p className="text-center text-green-600 mt-2">Preparando micrófono...</p>
+              )}
+            </div>
 
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-8">
               {/* Botón de micrófono */}
               <div className="relative">
-                {listening && (
+                {voiceModeActive && listening && (
                   <>
-                    <span className="absolute inset-0 rounded-full bg-orange-300 animate-ping opacity-70"></span>
-                    <span className="absolute inset-0 rounded-full bg-orange-400 animate-pulse opacity-50"></span>
+                    <span className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-70"></span>
+                    <span className="absolute inset-0 rounded-full bg-green-500 animate-pulse opacity-50"></span>
                   </>
                 )}
 
                 <button
-                  onClick={voiceModeActive ? stopVoiceRecognition : startVoiceRecognition}
-                  className={`relative w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-all ${
-                    listening
-                      ? "bg-orange-400 scale-110"
-                      : voiceModeActive
-                      ? "bg-orange-500"
-                      : "bg-gray-400 hover:bg-gray-500"
+                  onClick={toggleVoiceMode}
+                  className={`relative w-28 h-28 rounded-full flex items-center justify-center shadow-xl transition-all ${
+                    voiceModeActive
+                      ? listening
+                        ? "bg-green-500 scale-110 ring-4 ring-green-300"
+                        : "bg-green-500 hover:bg-green-600"
+                      : "bg-purple-500 hover:bg-purple-600"
                   }`}
-                  aria-label="Responder con voz"
+                  aria-label={voiceModeActive ? "Desactivar micrófono" : "Activar micrófono"}
                 >
-                  <Mic className="w-8 h-8 text-white" />
+                  <Mic className="w-12 h-12 text-white" />
                 </button>
               </div>
 
               {/* Texto explicativo */}
               <div className="flex-1 text-left">
-                <p className="text-lg text-amber-800 font-medium">
-                  ¿Prefieres hablar?
-                </p>
-                <p className="text-base text-amber-600">
-                  Presiona el micrófono para responder con voz
-                </p>
+                {voiceModeActive ? (
+                  <>
+                    <p className="text-xl font-bold text-green-700">¡Micrófono activo!</p>
+                    <p className="text-lg text-green-600">Di una opción para seleccionarla</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xl font-bold text-purple-700">Modo táctil</p>
+                    <p className="text-lg text-purple-600">Toca la respuesta con el dedo</p>
+                    <button
+                      onClick={toggleVoiceMode}
+                      className="mt-3 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-all"
+                    >
+                      Activar micrófono
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Mensajes de estado */}
-            {listening && (
-              <p className="mt-4 text-lg text-orange-600 animate-pulse">
-                🎤 Escuchando... habla claramente
-              </p>
-            )}
-            
+            {/* Mensajes de error */}
             {voiceError && (
-              <p className="mt-4 text-lg text-red-600">
-                {voiceError}
-              </p>
-            )}
-
-            {/* Botón para desactivar modo voz */}
-            {voiceModeActive && !listening && !voiceError && (
-              <button
-                onClick={deactivateVoiceMode}
-                className="mt-4 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl"
-              >
-                Desactivar modo voz
-              </button>
+              <div className="mt-4 p-4 bg-red-100 rounded-xl border-2 border-red-300 w-full">
+                <p className="text-lg text-red-700 text-center">
+                  {voiceError}
+                </p>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Botón de pista */}
+        {/* Botón de pista ÚNICO */}
         {!showHint && (
           <div className="text-center">
             <button
-              onClick={() => setShowHint(true)}
-              className="px-8 py-4 bg-blue-500 hover:bg-blue-600 text-white text-xl font-bold rounded-xl shadow-md hover:shadow-lg transition-all"
+              onClick={generateAIHint}
+              disabled={isGeneratingHint}
+              className="px-8 py-4 bg-purple-500 hover:bg-purple-600 text-white text-xl font-bold rounded-xl shadow-md hover:shadow-lg transition-all inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Lightbulb className="w-6 h-6 inline-block mr-2" />
-              ¿Necesitas una pista?
+              {isGeneratingHint ? (
+                <>
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  Generando pista...
+                </>
+              ) : (
+                <>
+                  <Lightbulb className="w-6 h-6" />
+                  Pista
+                </>
+              )}
             </button>
           </div>
         )}

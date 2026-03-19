@@ -1,26 +1,148 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Lightbulb, Home } from 'lucide-react';
-import { artistQuestions } from '../data/artistQuiz';
+import { 
+  ArrowLeft, Lightbulb, Home, Loader2, Calendar, 
+  CheckCircle, XCircle, Sparkles 
+} from 'lucide-react';
+import { generateArtistQuestions, ArtistQuestion } from '../data/artistQuizService';
+import { hintService } from '../data/hintService';
 import { ProgressIndicator } from '../components/ProgressIndicator';
 
 export function ArtistQuizPlay() {
   const navigate = useNavigate();
+  const [questions, setQuestions] = useState<ArtistQuestion[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [answers, setAnswers] = useState<{ correct: boolean }[]>([]);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(3);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  const question = artistQuestions[currentQuestion];
-  const isLastQuestion = currentQuestion === artistQuestions.length - 1;
+  // Estados para pistas
+  const [aiHint, setAiHint] = useState<string | null>(null);
+  const [isGeneratingHint, setIsGeneratingHint] = useState(false);
+  const [hintCache, setHintCache] = useState<Record<string, string>>({});
+  
+  useEffect(() => {
+    const loadQuestions = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const generatedQuestions = await generateArtistQuestions(5);
+        setQuestions(generatedQuestions);
+      } catch (error) {
+        console.error("Error cargando preguntas:", error);
+        setError("No se pudieron cargar las preguntas.");
+        
+        const { getSampleArtistQuestions } = await import('../data/artistQuizService');
+        setQuestions(getSampleArtistQuestions());
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadQuestions();
+  }, []);
+  
+  // Auto-advance después de 3 segundos
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval>;
+
+    if (showFeedback) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            handleContinue();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [showFeedback]);
+  
+  // Reset timer cuando cambia la pregunta
+  useEffect(() => {
+    setTimeLeft(3);
+    setAiHint(null);
+    setShowHint(false);
+  }, [currentQuestion]);
+
+  // PRECARGADO DE PISTAS (CORREGIDO)
+  useEffect(() => {
+    const preloadHints = async () => {
+      if (!questions.length || !questions[currentQuestion]) return;
+      
+      const currentQ = questions[currentQuestion];
+      const cacheKey = `${currentQ.songTitle}-${currentQ.correctArtist}`;
+      
+      if (!hintCache[cacheKey]) {
+        console.log(`📥 Precargando pista para: "${currentQ.songTitle}"`);
+        try {
+          // CORRECCIÓN: Pasar correctArtist como parámetro
+          const res = await hintService.getArtistHint(
+            currentQ.songTitle,
+            currentQ.options,
+            currentQ.correctArtist,
+            currentQ.decade,
+            currentQ.year
+          );
+          setHintCache(prev => ({ ...prev, [cacheKey]: res.hint }));
+        } catch (error) {
+          console.error('Error precargando pista:', error);
+        }
+      }
+    };
+
+    if (questions.length > 0) preloadHints();
+  }, [currentQuestion, questions]);
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-16 w-16 text-amber-600 mx-auto mb-4" />
+          <p className="text-2xl text-amber-700">Buscando canciones...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error || questions.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-2xl text-amber-700">{error || "No hay preguntas disponibles"}</p>
+          <button
+            onClick={() => navigate('/menu')}
+            className="mt-6 px-8 py-4 bg-amber-600 text-white text-xl rounded-xl shadow-lg hover:bg-amber-700 transition-all"
+          >
+            Volver al menú
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  const question = questions[currentQuestion];
+  const isLastQuestion = currentQuestion === questions.length - 1;
+  const progress = ((currentQuestion + 1) / questions.length) * 100;
   
   const handleAnswerSelect = (answer: string) => {
+    const correct = answer === question.correctArtist;
+    setIsCorrect(correct);
     setSelectedAnswer(answer);
     setShowFeedback(true);
-    
-    const isCorrect = answer === question.correctArtist;
-    setAnswers([...answers, { correct: isCorrect }]);
+    setAnswers([...answers, { correct }]);
   };
   
   const handleContinue = () => {
@@ -29,7 +151,7 @@ export function ArtistQuizPlay() {
       navigate('/artist-quiz/results', { 
         state: { 
           correct: correctCount,
-          total: artistQuestions.length 
+          total: questions.length 
         } 
       });
     } else {
@@ -37,72 +159,126 @@ export function ArtistQuizPlay() {
       setSelectedAnswer(null);
       setShowHint(false);
       setShowFeedback(false);
+      setIsCorrect(false);
+      setAiHint(null);
+    }
+  };
+
+  // Función para generar pista (AHORA SIEMPRE FUNCIONA)
+  const generateHint = async () => {
+    if (!question) return;
+    
+    const cacheKey = `${question.songTitle}-${question.correctArtist}`;
+    
+    // Usar caché si existe
+    if (hintCache[cacheKey]) {
+      setAiHint(hintCache[cacheKey]);
+      setShowHint(true);
+      return;
+    }
+    
+    setIsGeneratingHint(true);
+    
+    try {
+      // CORRECCIÓN: Llamada correcta con todos los parámetros
+      const response = await hintService.getArtistHint(
+        question.songTitle,
+        question.options,
+        question.correctArtist,
+        question.decade,
+        question.year
+      );
+      
+      setHintCache(prev => ({ ...prev, [cacheKey]: response.hint }));
+      setAiHint(response.hint);
+      setShowHint(true);
+    } catch (error) {
+      console.error('Error generando pista:', error);
+      
+      // Fallback muy simple
+      setAiHint(`El artista empieza con "${question.correctArtist.charAt(0)}"`);
+      setShowHint(true);
+    } finally {
+      setIsGeneratingHint(false);
     }
   };
   
   if (showFeedback && selectedAnswer) {
-    const isCorrect = selectedAnswer === question.correctArtist;
-    
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100 flex items-center justify-center p-4">
         <div className="max-w-2xl w-full">
-          <div className="bg-card rounded-2xl p-8 shadow-xl">
-            {isCorrect ? (
-              <>
-                <div className="text-center mb-8">
-                  <div className="inline-flex items-center justify-center w-20 h-20 bg-olive-green/10 rounded-full mb-6">
-                    <svg className="w-12 h-12 text-olive-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  
-                  <h2 className="text-[36px] mb-4 text-olive-green">
-                    ¡Muy bien!
-                  </h2>
-                  
-                  <p className="text-[22px] text-warm-gray leading-relaxed mb-4">
-                    Así es, lo cantaba
-                  </p>
-                  
-                  <p className="text-[28px] text-warm-black">
-                    {question.correctArtist}
-                  </p>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-center mb-8">
-                  <div className="inline-flex items-center justify-center w-20 h-20 bg-deep-blue/10 rounded-full mb-6">
-                    <svg className="w-12 h-12 text-deep-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  
-                  <h2 className="text-[36px] mb-4 text-deep-blue">
-                    Inténtalo de nuevo
-                  </h2>
-                  
-                  <p className="text-[22px] text-warm-gray leading-relaxed mb-6">
-                    Esta canción la interpretaba:
-                  </p>
-                  
-                  <div className="bg-deep-blue/10 rounded-xl p-6">
-                    <p className="text-[28px] text-deep-blue-dark">
-                      {question.correctArtist}
-                    </p>
-                  </div>
-                </div>
-              </>
-            )}
+          <div className="bg-white rounded-3xl p-8 md:p-12 shadow-xl">
             
-            <div className="flex justify-center">
+            <div className="text-center mb-8">
+              <div className={`inline-flex items-center justify-center w-28 h-28 rounded-full mb-6 mx-auto ${
+                isCorrect ? 'bg-green-100' : 'bg-red-100'
+              }`}>
+                {isCorrect ? (
+                  <CheckCircle className="w-16 h-16 text-green-600" strokeWidth={1.5} />
+                ) : (
+                  <XCircle className="w-16 h-16 text-red-500" strokeWidth={1.5} />
+                )}
+              </div>
+              
+              <h2 className={`text-4xl md:text-5xl font-bold mb-4 ${
+                isCorrect ? 'text-green-700' : 'text-red-600'
+              }`}>
+                {isCorrect ? '¡Muy bien!' : 'Casi lo logras'}
+              </h2>
+              
+              {isCorrect ? (
+                <p className="text-xl text-amber-700 mb-4">
+                  Así es, "{question.songTitle}" la cantaba
+                </p>
+              ) : (
+                <p className="text-xl text-amber-700 mb-4">
+                  Esta canción la interpretaba:
+                </p>
+              )}
+              
+              <div className={`rounded-xl p-6 ${
+                isCorrect ? 'bg-green-100' : 'bg-amber-100'
+              }`}>
+                <p className="text-2xl md:text-3xl font-bold text-amber-900">
+                  {question.correctArtist}
+                </p>
+                {question.decade && (
+                  <p className="text-lg text-amber-600 mt-2 flex items-center justify-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    Década de los {question.decade}
+                    {question.year && ` • ${question.year}`}
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            <div className="max-w-md mx-auto mt-8">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-lg text-amber-600">
+                  Siguiente pregunta en...
+                </span>
+                <span className="text-2xl font-bold text-amber-800">
+                  {timeLeft}s
+                </span>
+              </div>
+              
+              <div className="w-full h-3 bg-amber-100 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-1000 ${
+                    isCorrect ? 'bg-green-500' : 'bg-amber-500'
+                  }`}
+                  style={{ width: `${(timeLeft / 3) * 100}%` }}
+                />
+              </div>
+              
               <button
                 onClick={handleContinue}
-                className="bg-deep-blue text-warm-white hover:bg-deep-blue-dark shadow-md rounded-xl transition-all duration-200 active:scale-95 px-10 py-5 min-h-[70px] text-[22px]"
+                className="mt-6 px-8 py-4 bg-amber-600 hover:bg-amber-700 text-white text-xl font-bold rounded-xl shadow-lg w-full"
               >
-                {isLastQuestion ? 'Ver resultados' : 'Siguiente pregunta'}
+                {isLastQuestion ? 'Ver resultados ahora' : 'Continuar ahora'}
               </button>
             </div>
+            
           </div>
         </div>
       </div>
@@ -110,95 +286,104 @@ export function ArtistQuizPlay() {
   }
   
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 bg-card shadow-sm border-b border-border z-10">
-        <div className="max-w-4xl mx-auto px-4 py-5">
-          <div className="flex items-center gap-4 mb-4">
+    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100">
+      <header className="sticky top-0 bg-white shadow-md border-b border-amber-200 z-10">
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/menu')}
-              className="w-12 h-12 flex items-center justify-center rounded-xl hover:bg-warm-beige-dark transition-colors flex-shrink-0"
+              className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center hover:bg-amber-200 transition-colors"
               aria-label="Volver al menú"
             >
-              <Home className="w-7 h-7 text-wine" strokeWidth={2} />
+              <ArrowLeft className="w-6 h-6 text-amber-800" />
             </button>
             
-            <h1 className="text-[24px] text-warm-black">
+            <h1 className="text-xl font-bold text-amber-900 flex-1">
               ¿Quién cantaba?
             </h1>
+            
+            <div className="bg-amber-100 px-4 py-2 rounded-xl flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-amber-700" />
+              <span className="text-lg font-bold text-amber-800">
+                {question.decade}
+              </span>
+            </div>
           </div>
           
-          <ProgressIndicator 
-            current={currentQuestion + 1} 
-            total={artistQuestions.length} 
-          />
+          <div className="w-full h-3 bg-amber-100 rounded-full mt-3 overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
         </div>
-      </div>
+      </header>
       
-      {/* Contenido de la pregunta */}
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        {/* Título de la canción */}
-        <div className="text-center mb-8">
-          <p className="text-[22px] text-warm-gray mb-4">
+      <main className="max-w-3xl mx-auto px-4 py-6">
+        <div className="text-center mb-6">
+          <p className="text-xl text-amber-700 mb-3">
             ¿Quién cantaba esta canción?
           </p>
           
-          <div className="bg-card rounded-2xl p-8 shadow-lg">
-            <p className="text-[32px] text-wine leading-tight">
+          <div className="bg-white rounded-2xl p-8 shadow-lg border-2 border-amber-200">
+            <p className="text-2xl md:text-3xl text-amber-900 font-medium">
               "{question.songTitle}"
             </p>
-            
-            {question.decade && (
-              <p className="text-[20px] text-warm-gray-light mt-4">
-                Década de {question.decade}
-              </p>
-            )}
           </div>
         </div>
         
-        {/* Pista */}
-        {showHint && question.hint && (
-          <div className="bg-deep-blue/10 rounded-xl p-6 mb-8 border-2 border-deep-blue/20 animate-in fade-in duration-200">
-            <div className="flex gap-4 items-start">
-              <Lightbulb className="w-7 h-7 text-deep-blue flex-shrink-0 mt-1" strokeWidth={2} />
+        {/* Pista (si está activada) */}
+        {showHint && aiHint && (
+          <div className="bg-purple-50 rounded-xl p-5 mb-6 border-2 border-purple-200">
+            <div className="flex gap-3 items-start">
+              <Sparkles className="w-7 h-7 text-purple-600 flex-shrink-0 mt-1" />
               <div>
-                <p className="text-[18px] text-deep-blue mb-1">Pista:</p>
-                <p className="text-[22px] text-deep-blue-dark leading-relaxed">
-                  {question.hint}
+                <p className="text-lg font-bold text-purple-800 mb-1">
+                  Pista:
+                </p>
+                <p className="text-xl text-purple-700">
+                  {aiHint}
                 </p>
               </div>
             </div>
           </div>
         )}
         
-        {/* Opciones de respuesta */}
-        <div className="space-y-4 mb-8">
+        <div className="space-y-3 mb-8">
           {question.options.map((option, index) => (
             <button
               key={index}
               onClick={() => handleAnswerSelect(option)}
-              className="w-full bg-card rounded-xl p-7 shadow-md hover:shadow-lg transition-all border-2 border-transparent hover:border-deep-blue/30 active:scale-98"
+              className="w-full bg-white rounded-xl p-6 shadow-md border-2 border-amber-200 hover:border-amber-400 hover:bg-amber-50 active:scale-[0.99] transition-all text-left"
             >
-              <p className="text-[24px] text-warm-black">
-                {option}
-              </p>
+              <p className="text-xl text-amber-900 font-medium">{option}</p>
             </button>
           ))}
         </div>
         
         {/* Botón de pista */}
-        {!showHint && question.hint && (
+        {!showHint && (
           <div className="text-center">
             <button
-              onClick={() => setShowHint(true)}
-              className="bg-transparent border-2 border-deep-blue text-deep-blue hover:bg-deep-blue hover:text-warm-white rounded-xl transition-all duration-200 active:scale-95 px-8 py-4 min-h-[60px] text-[20px] inline-flex items-center gap-3"
+              onClick={generateHint}
+              disabled={isGeneratingHint}
+              className="px-8 py-4 bg-purple-500 hover:bg-purple-600 text-white text-xl font-bold rounded-xl shadow-md hover:shadow-lg transition-all inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Lightbulb className="w-6 h-6" strokeWidth={2} />
-              Ver pista
+              {isGeneratingHint ? (
+                <>
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  Cargando...
+                </>
+              ) : (
+                <>
+                  <Lightbulb className="w-6 h-6" />
+                  Pista
+                </>
+              )}
             </button>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

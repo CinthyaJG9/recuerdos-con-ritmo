@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Shuffle, Check, X, Undo2, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  ArrowLeft, Shuffle, Check, X, Undo2, RotateCcw, 
+  ChevronLeft, ChevronRight, HelpCircle, Lightbulb,
+  Sparkles, Loader2
+} from 'lucide-react';
+import { hintService } from '../data/hintService';
 
 export function OrderGame() {
   const navigate = useNavigate();
@@ -10,6 +15,7 @@ export function OrderGame() {
   const [currentRound, setCurrentRound] = useState(0);
   const [verses, setVerses] = useState<string[]>([]);
   const [correctOrder, setCorrectOrder] = useState<number[]>([]);
+  const [originalVerses, setOriginalVerses] = useState<string[]>([]);
   const [userOrder, setUserOrder] = useState<number[]>([]);
   const [availableIndices, setAvailableIndices] = useState<number[]>([]);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -17,6 +23,14 @@ export function OrderGame() {
   const [timeLeft, setTimeLeft] = useState(3);
   const [score, setScore] = useState(0);
   const [showHint, setShowHint] = useState(false);
+  
+  // Estados para pistas con IA
+  const [aiHint, setAiHint] = useState<string | null>(null);
+  const [isGeneratingHint, setIsGeneratingHint] = useState(false);
+  const [hintCache, setHintCache] = useState<Record<string, string>>({});
+  
+  // Estado para instrucciones
+  const [showInstructions, setShowInstructions] = useState(false);
   
   // Validación inicial
   useEffect(() => {
@@ -53,6 +67,7 @@ export function OrderGame() {
     const round = questions[roundIndex];
     setVerses(round.verses);
     setCorrectOrder(round.correctOrder);
+    setOriginalVerses(round.originalVerses || []);
     
     // Crear orden aleatorio inicial
     const indices = Array.from({ length: round.verses.length }, (_, i) => i);
@@ -60,6 +75,7 @@ export function OrderGame() {
     setAvailableIndices(indices.sort(() => Math.random() - 0.5));
     setShowFeedback(false);
     setShowHint(false);
+    setAiHint(null);
     setTimeLeft(3);
   };
   
@@ -93,19 +109,19 @@ export function OrderGame() {
     setAvailableIndices(newAvailable);
   };
   
-const checkOrder = (order: number[]) => {
-  // Obtenemos los textos en el orden que el usuario eligió
-  const userTexts = order.map(idx => verses[idx]);
-  
-  // Comparamos contra los textos originales (que están en questions[currentRound].originalVerses)
-  const correct = userTexts.every((text, idx) => text === questions[currentRound].originalVerses[idx]);
-  
-  setIsCorrect(correct);
-  if (correct) {
-    setScore(prev => prev + 1);
-  }
-  setShowFeedback(true);
-};
+  const checkOrder = (order: number[]) => {
+    // Obtenemos los textos en el orden que el usuario eligió
+    const userTexts = order.map(idx => verses[idx]);
+    
+    // Comparamos contra los textos originales
+    const correct = userTexts.every((text, idx) => text === originalVerses[idx]);
+    
+    setIsCorrect(correct);
+    if (correct) {
+      setScore(prev => prev + 1);
+    }
+    setShowFeedback(true);
+  };
   
   const handleNextRound = () => {
     if (currentRound === questions.length - 1) {
@@ -140,6 +156,113 @@ const checkOrder = (order: number[]) => {
     setAvailableIndices(indices.sort(() => Math.random() - 0.5));
     setShowFeedback(false);
     setShowHint(false);
+    setAiHint(null);
+  };
+
+  const toggleInstructions = () => {
+    setShowInstructions(!showInstructions);
+  };
+
+  // ============================================
+  // PRECARGADO DE PISTAS PARA ORDER GAME
+  // ============================================
+  useEffect(() => {
+    // Generar pista de la ronda actual apenas cargue
+    const preloadHints = async () => {
+      if (!questions.length || !questions[currentRound]) return;
+      
+      const currentRoundData = questions[currentRound];
+      const cacheKey = `${track.title}-round-${currentRound}`;
+      
+      if (!hintCache[cacheKey]) {
+        console.log(`Precargando pista para ronda actual...`);
+        try {
+          const res = await hintService.getOrderHint(
+            track.title,
+            track.artist,
+            currentRoundData.verses,
+            userOrder,
+            currentRoundData.verses.length
+          );
+          setHintCache(prev => ({ ...prev, [cacheKey]: res.hint }));
+        } catch (error) {
+          console.error('Error precargando pista actual:', error);
+        }
+      }
+
+      // Pre-generar la de la siguiente ronda también
+      if (currentRound < questions.length - 1) {
+        const nextRound = questions[currentRound + 1];
+        const nextKey = `${track.title}-round-${currentRound + 1}`;
+        if (!hintCache[nextKey]) {
+          console.log(`Precargando pista para siguiente ronda...`);
+          hintService.getOrderHint(
+            track.title,
+            track.artist,
+            nextRound.verses,
+            [],
+            nextRound.verses.length
+          ).then(res => {
+            setHintCache(prev => ({ ...prev, [nextKey]: res.hint }));
+          }).catch(error => {
+            console.error('Error precargando siguiente pista:', error);
+          });
+        }
+      }
+    };
+
+    if (questions.length > 0) preloadHints();
+  }, [currentRound, questions, userOrder]);
+
+  // ============================================
+  // FUNCIÓN DE PISTA CON IA
+  // ============================================
+  
+  const generateAIHint = async () => {
+    if (!questions[currentRound]) return;
+    
+    const roundData = questions[currentRound];
+    const cacheKey = `${track.title}-round-${currentRound}`;
+    
+    // Si ya tenemos la pista en caché, usarla inmediatamente
+    if (hintCache[cacheKey]) {
+      console.log('Usando pista precargada');
+      setAiHint(hintCache[cacheKey]);
+      setShowHint(true);
+      return;
+    }
+    
+    setIsGeneratingHint(true);
+    
+    try {
+      const response = await hintService.getOrderHint(
+        track.title,
+        track.artist,
+        roundData.verses,
+        userOrder,
+        roundData.verses.length
+      );
+      
+      setHintCache(prev => ({ ...prev, [cacheKey]: response.hint }));
+      setAiHint(response.hint);
+      setShowHint(true);
+    } catch (error) {
+      console.error('Error generando pista con IA:', error);
+      
+      // Pista de respaldo rápida
+      const fallbackHints = [
+        "El siguiente verso continúa la idea del anterior",
+        "Presta atención a cómo termina el verso anterior",
+        "Busca la palabra que rime",
+        "Recuerda cómo fluye la canción",
+        "El verso correcto tiene una palabra clave"
+      ];
+      const fallbackHint = fallbackHints[Math.floor(Math.random() * fallbackHints.length)];
+      setAiHint(fallbackHint);
+      setShowHint(true);
+    } finally {
+      setIsGeneratingHint(false);
+    }
   };
   
   if (!track || !questions || !Array.isArray(questions) || questions.length === 0) {
@@ -156,7 +279,6 @@ const checkOrder = (order: number[]) => {
   const round = questions[currentRound];
   const progress = ((currentRound + 1) / questions.length) * 100;
   
-  // Determinar qué parte de la canción es
   const getSongPart = () => {
     if (currentRound === 0) return "principio";
     if (currentRound === 1) return "parte media";
@@ -187,26 +309,25 @@ const checkOrder = (order: number[]) => {
                 {isCorrect ? '¡Muy bien!' : 'Casi lo logras'}
               </h2>
               
-{!isCorrect && (
-  <div className="mt-4">
-    <p className="text-2xl text-amber-700 mb-3">
-      El orden correcto era:
-    </p>
-    <div className="bg-amber-100 rounded-2xl p-5 max-w-md mx-auto">
-      {/* Usamos directamente originalVerses que ya vienen en orden */}
-      {questions[currentRound].originalVerses.map((verseText: string, position: number) => (
-        <div key={position} className="flex items-center gap-3 mb-3">
-          <span className="w-8 h-8 bg-amber-600 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
-            {position + 1}
-          </span>
-          <p className="text-lg text-amber-800 text-left flex-1">
-            {verseText}
-          </p>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+              {!isCorrect && (
+                <div className="mt-4">
+                  <p className="text-2xl text-amber-700 mb-3">
+                    El orden correcto era:
+                  </p>
+                  <div className="bg-amber-100 rounded-2xl p-5 max-w-md mx-auto">
+                    {originalVerses.map((verseText: string, position: number) => (
+                      <div key={position} className="flex items-center gap-3 mb-3">
+                        <span className="w-8 h-8 bg-amber-600 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+                          {position + 1}
+                        </span>
+                        <p className="text-lg text-amber-800 text-left flex-1">
+                          {verseText}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             
             <div className="max-w-md mx-auto mt-8">
@@ -243,6 +364,44 @@ const checkOrder = (order: number[]) => {
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100">
+      
+      {/* Botón de ayuda flotante */}
+      <button
+        onClick={toggleInstructions}
+        className="fixed bottom-4 right-4 w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center shadow-lg hover:bg-blue-600 transition-colors z-20"
+        aria-label="Ayuda"
+      >
+        <HelpCircle className="w-8 h-8 text-white" />
+      </button>
+
+      {/* Panel de instrucciones */}
+      {showInstructions && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-30 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md shadow-2xl">
+            <h3 className="text-2xl font-bold text-amber-900 mb-4">Cómo jugar:</h3>
+            <ul className="space-y-4 text-lg text-amber-700">
+              <li className="flex items-center gap-3">
+                <span className="w-8 h-8 bg-amber-200 rounded-full flex items-center justify-center text-xl">👆</span>
+                <span>Toca los versos en el orden correcto</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="w-8 h-8 bg-amber-200 rounded-full flex items-center justify-center">↩️</span>
+                <span>Deshacer si te equivocas</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="w-8 h-8 bg-amber-200 rounded-full flex items-center justify-center">💡</span>
+                <span>Usa la pista si necesitas ayuda</span>
+              </li>
+            </ul>
+            <button
+              onClick={toggleInstructions}
+              className="mt-6 w-full py-4 bg-amber-600 text-white text-xl font-bold rounded-xl"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Header */}
       <header className="sticky top-0 bg-white shadow-md border-b border-amber-200 z-10">
@@ -328,17 +487,33 @@ const checkOrder = (order: number[]) => {
         {/* Instrucción */}
         <div className="bg-purple-50 rounded-xl p-4 mb-6 border-2 border-purple-200">
           <p className="text-xl text-purple-800 text-center font-medium">
-            🎵 Ordena los 4 versos de esta estrofa
+            Ordena los 4 versos de esta estrofa
           </p>
         </div>
+
+        {/* Pista con IA */}
+        {showHint && aiHint && (
+          <div className="bg-purple-50 rounded-xl p-5 mb-6 border-2 border-purple-200">
+            <div className="flex gap-3 items-start">
+              <Sparkles className="w-7 h-7 text-purple-600 flex-shrink-0 mt-1" />
+              <div>
+                <p className="text-lg font-bold text-purple-800 mb-1">
+                  Pista:
+                </p>
+                <p className="text-xl text-purple-700">
+                  {aiHint}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         
-        {/* Área de juego - diseño simplificado */}
+        {/* Área de juego */}
         <div className="space-y-6">
           
-          {/* Versos disponibles (para seleccionar) */}
+          {/* Versos disponibles */}
           <div className="bg-white rounded-2xl p-6 shadow-lg">
-            <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center gap-2">
-              <span className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-purple-700">📌</span>
+            <h3 className="text-xl font-bold text-amber-800 mb-4">
               Versos para ordenar:
             </h3>
             
@@ -365,10 +540,10 @@ const checkOrder = (order: number[]) => {
             )}
           </div>
 
+          {/* Tu orden actual */}
           <div className="bg-white rounded-2xl p-6 shadow-lg">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-amber-800 flex items-center gap-2">
-                <span className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center text-amber-700">📋</span>
+              <h3 className="text-xl font-bold text-amber-800">
                 Tu orden:
               </h3>
               {userOrder.length > 0 && (
@@ -377,7 +552,7 @@ const checkOrder = (order: number[]) => {
                   className="flex items-center gap-2 px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-xl transition-colors"
                 >
                   <Undo2 className="w-5 h-5" />
-                  <span>Deshacer último</span>
+                  <span>Deshacer</span>
                 </button>
               )}
             </div>
@@ -429,11 +604,29 @@ const checkOrder = (order: number[]) => {
             className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white text-lg font-bold rounded-xl shadow-md hover:shadow-lg transition-all inline-flex items-center justify-center gap-2"
           >
             <RotateCcw className="w-5 h-5" />
-            Reiniciar esta estrofa
+            Reiniciar
+          </button>
+          
+          {/* Botón Pista con IA */}
+          <button
+            onClick={generateAIHint}
+            disabled={isGeneratingHint}
+            className="px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white text-lg font-bold rounded-xl shadow-md hover:shadow-lg transition-all inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isGeneratingHint ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Cargando pista...
+              </>
+            ) : (
+              <>
+                <Lightbulb className="w-5 h-5" />
+                Pista
+              </>
+            )}
           </button>
           
         </div>
-        
       </main>
     </div>
   );
