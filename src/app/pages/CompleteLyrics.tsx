@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   ArrowLeft, Lightbulb, CheckCircle, XCircle, Mic, 
@@ -20,11 +20,12 @@ export function CompleteLyrics() {
   const [isCorrect, setIsCorrect] = useState(false);
   const [timeLeft, setTimeLeft] = useState(3);
 
-  // Estados para modo voz (DESACTIVADO POR DEFECTO)
   const [voiceModeActive, setVoiceModeActive] = useState(false);
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
+
+  const recognitionRef = useRef<any | null>(null);
 
   // Estados para pistas con IA
   const [aiHint, setAiHint] = useState<string | null>(null);
@@ -247,47 +248,44 @@ export function CompleteLyrics() {
     }
 
     const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+
     recognition.lang = "es-ES";
-    recognition.interimResults = true;
-    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.continuous = false;
 
     setListening(true);
     setVoiceError(null);
     setVoiceModeActive(true);
 
     recognition.onresult = (event: any) => {
-      const lastResult = event.results[event.results.length - 1];
-      const transcript = lastResult[0].transcript;
-      console.log("Escuché:", transcript);
+      const transcript = normalizeText(event.results[0][0].transcript);
 
-      const normalizedTranscript = normalizeText(transcript);
       let matchedOption: string | null = null;
-      let bestMatchScore = 0;
 
       currentLyric.options.forEach((option: string) => {
         const normalizedOption = normalizeText(option);
-        
-        if (normalizedTranscript.includes(normalizedOption)) {
+
+        if (
+          transcript.includes(normalizedOption) ||
+          normalizedOption.includes(transcript) ||
+          similarity(transcript, normalizedOption) > 0.6
+        ) {
           matchedOption = option;
-          bestMatchScore = 1;
-        } else {
-          const score = similarity(transcript, option);
-          if (score > 0.6 && score > bestMatchScore) {
-            matchedOption = option;
-            bestMatchScore = score;
-          }
         }
       });
 
       if (matchedOption) {
         recognition.stop();
         handleAnswerSelect(matchedOption);
+      } else {
+        alert("No entendí bien. Intenta decir una de las opciones.");
       }
     };
 
     recognition.onerror = (event: any) => {
       console.error("Error de voz:", event.error);
-      
+
       if (event.error === "not-allowed") {
         setVoiceError("Permiso denegado. Activa el micrófono.");
       } else {
@@ -297,6 +295,7 @@ export function CompleteLyrics() {
     };
 
     recognition.onend = () => {
+      recognitionRef.current = null;
       setListening(false);
     };
 
@@ -306,11 +305,22 @@ export function CompleteLyrics() {
       console.error("Error al iniciar reconocimiento:", error);
       setVoiceError("No se pudo iniciar el micrófono");
       setListening(false);
+      recognitionRef.current = null;
     }
   };
 
   const stopVoiceRecognition = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // Ignorar errores al detener
+      }
+      recognitionRef.current = null;
+    }
+
     setListening(false);
+    setVoiceModeActive(false);
   };
 
   const toggleVoiceMode = () => {

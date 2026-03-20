@@ -86,7 +86,7 @@ export function ArtistQuizPlay() {
       const cacheKey = `${currentQ.songTitle}-${currentQ.correctArtist}`;
       
       if (!hintCache[cacheKey]) {
-        console.log(`📥 Precargando pista para: "${currentQ.songTitle}"`);
+        console.log(`Precargando pista para: "${currentQ.songTitle}"`);
         try {
           // CORRECCIÓN: Pasar correctArtist como parámetro
           const res = await hintService.getArtistHint(

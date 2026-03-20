@@ -19,7 +19,7 @@ export interface HintResponse {
 
 class HintService {
   private ollamaUrl = 'http://localhost:11434/api/generate';
-  private model = 'gemma2:2b'; // Cambia según el modelo que descargues
+  private model = 'gemma2:2b'; 
   
   // Generar pista para completar letra
   async getCompleteLyricsHint(
