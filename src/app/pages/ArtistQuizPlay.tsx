@@ -2,14 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Lightbulb, Home, Loader2, Calendar, 
-  CheckCircle, XCircle, Sparkles 
+  CheckCircle, XCircle, Sparkles, Volume2, VolumeX
 } from 'lucide-react';
 import { generateArtistQuestions, ArtistQuestion } from '../data/artistQuizService';
 import { hintService } from '../data/hintService';
+import { useVoice } from '../../context/VoiceContext';
 import { ProgressIndicator } from '../components/ProgressIndicator';
 
 export function ArtistQuizPlay() {
   const navigate = useNavigate();
+  const { voiceEnabled, toggleVoice, speak } = useVoice();
   const [questions, setQuestions] = useState<ArtistQuestion[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -20,12 +22,34 @@ export function ArtistQuizPlay() {
   const [timeLeft, setTimeLeft] = useState(3);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasSpokenWelcome, setHasSpokenWelcome] = useState(false);
   
   // Estados para pistas
   const [aiHint, setAiHint] = useState<string | null>(null);
   const [isGeneratingHint, setIsGeneratingHint] = useState(false);
   const [hintCache, setHintCache] = useState<Record<string, string>>({});
   
+  // Mensajes de bienvenida
+  const welcomeMessages = [
+    "Vamos a jugar a adivinar quién cantaba cada canción. Te daré pistas si las necesitas.",
+    "¿Listo para el juego? Te voy a mostrar canciones y tú eliges quién las cantaba. Empecemos.",
+    "Prepárate para recordar grandes artistas. Aquí tienes la primera canción."
+  ];
+  
+  // Mensajes al responder
+  const correctMessages = [
+    "Muy bien. Así es, esa canción la cantaba",
+    "Excelente. Tienes buena memoria musical.",
+    "Correcto. Sabes quién es ese artista."
+  ];
+  
+  const incorrectMessages = [
+    "Casi. La respuesta correcta era",
+    "No te preocupes. Era",
+    "Estuviste cerca. El artista correcto es"
+  ];
+  
+  // Cargar preguntas
   useEffect(() => {
     const loadQuestions = async () => {
       setIsLoading(true);
@@ -47,6 +71,19 @@ export function ArtistQuizPlay() {
     
     loadQuestions();
   }, []);
+  
+  // Bienvenida al cargar el juego
+  useEffect(() => {
+    if (!isLoading && questions.length > 0 && voiceEnabled && !hasSpokenWelcome) {
+      const timer = setTimeout(() => {
+        const randomMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+        speak(randomMessage);
+        setHasSpokenWelcome(true);
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, questions, voiceEnabled]);
   
   // Auto-advance después de 3 segundos
   useEffect(() => {
@@ -77,7 +114,7 @@ export function ArtistQuizPlay() {
     setShowHint(false);
   }, [currentQuestion]);
 
-  // PRECARGADO DE PISTAS (CORREGIDO)
+  // PRECARGADO DE PISTAS
   useEffect(() => {
     const preloadHints = async () => {
       if (!questions.length || !questions[currentQuestion]) return;
@@ -88,7 +125,6 @@ export function ArtistQuizPlay() {
       if (!hintCache[cacheKey]) {
         console.log(`Precargando pista para: "${currentQ.songTitle}"`);
         try {
-          // CORRECCIÓN: Pasar correctArtist como parámetro
           const res = await hintService.getArtistHint(
             currentQ.songTitle,
             currentQ.options,
@@ -143,6 +179,17 @@ export function ArtistQuizPlay() {
     setSelectedAnswer(answer);
     setShowFeedback(true);
     setAnswers([...answers, { correct }]);
+    
+    // Voz al responder
+    if (voiceEnabled) {
+      if (correct) {
+        const randomMsg = correctMessages[Math.floor(Math.random() * correctMessages.length)];
+        speak(`${randomMsg} ${question.correctArtist}.`);
+      } else {
+        const randomMsg = incorrectMessages[Math.floor(Math.random() * incorrectMessages.length)];
+        speak(`${randomMsg} ${question.correctArtist}.`);
+      }
+    }
   };
   
   const handleContinue = () => {
@@ -164,13 +211,12 @@ export function ArtistQuizPlay() {
     }
   };
 
-  // Función para generar pista (AHORA SIEMPRE FUNCIONA)
+  // Función para generar pista
   const generateHint = async () => {
     if (!question) return;
     
     const cacheKey = `${question.songTitle}-${question.correctArtist}`;
     
-    // Usar caché si existe
     if (hintCache[cacheKey]) {
       setAiHint(hintCache[cacheKey]);
       setShowHint(true);
@@ -180,7 +226,6 @@ export function ArtistQuizPlay() {
     setIsGeneratingHint(true);
     
     try {
-      // CORRECCIÓN: Llamada correcta con todos los parámetros
       const response = await hintService.getArtistHint(
         question.songTitle,
         question.options,
@@ -194,8 +239,6 @@ export function ArtistQuizPlay() {
       setShowHint(true);
     } catch (error) {
       console.error('Error generando pista:', error);
-      
-      // Fallback muy simple
       setAiHint(`El artista empieza con "${question.correctArtist.charAt(0)}"`);
       setShowHint(true);
     } finally {
@@ -223,7 +266,7 @@ export function ArtistQuizPlay() {
               <h2 className={`text-4xl md:text-5xl font-bold mb-4 ${
                 isCorrect ? 'text-green-700' : 'text-red-600'
               }`}>
-                {isCorrect ? '¡Muy bien!' : 'Casi lo logras'}
+                {isCorrect ? 'Muy bien' : 'Casi lo logras'}
               </h2>
               
               {isCorrect ? (
@@ -287,6 +330,24 @@ export function ArtistQuizPlay() {
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100">
+      
+      {/* Botón de voz flotante */}
+      <button
+        onClick={toggleVoice}
+        className={`fixed top-4 right-4 w-12 h-12 rounded-full shadow-md flex items-center justify-center transition-all z-20 ${
+          voiceEnabled 
+            ? 'bg-amber-500 hover:bg-amber-600 text-white' 
+            : 'bg-gray-300 hover:bg-gray-400 text-gray-600'
+        }`}
+        aria-label={voiceEnabled ? "Desactivar voz" : "Activar voz"}
+      >
+        {voiceEnabled ? (
+          <Volume2 className="w-6 h-6" />
+        ) : (
+          <VolumeX className="w-6 h-6" />
+        )}
+      </button>
+      
       <header className="sticky top-0 bg-white shadow-md border-b border-amber-200 z-10">
         <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-center gap-3">
@@ -332,7 +393,7 @@ export function ArtistQuizPlay() {
           </div>
         </div>
         
-        {/* Pista (si está activada) */}
+        {/* Pista */}
         {showHint && aiHint && (
           <div className="bg-purple-50 rounded-xl p-5 mb-6 border-2 border-purple-200">
             <div className="flex gap-3 items-start">

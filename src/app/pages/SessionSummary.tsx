@@ -1,16 +1,22 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Music2, Award, Clock, Home, Trophy, Sparkles } from 'lucide-react';
+import { Music2, Award, Clock, Home, Trophy, Sparkles, Volume2, VolumeX } from 'lucide-react';
+import { voiceService } from '../data/voiceService';
 
 export function SessionSummary() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { track, correct, total, artist } = location.state || { 
+  const { track, correct, total, artist, gameType, voiceAlreadySpoken } = location.state || { 
     track: '', 
     artist: '', 
     correct: 0, 
-    total: 0 
+    total: 0,
+    gameType: 'complete',
+    voiceAlreadySpoken: false
   };
+  
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [hasSpoken, setHasSpoken] = useState(voiceAlreadySpoken);
   
   const percentage = Math.round((correct / total) * 100);
   
@@ -53,8 +59,81 @@ export function SessionSummary() {
   const message = getMessage();
   const IconComponent = message.icon;
   
+  // Mensajes de voz según resultado
+  const getVoiceMessage = () => {
+    if (percentage === 100) {
+      return `¡Excelente! Conoces perfectamente "${track}". Qué bonito que la recuerdes. ¡Sigue así!`;
+    } else if (percentage >= 80) {
+      return `Muy bien, lo estás haciendo de maravilla con "${track}". Cada vez la conoces mejor.`;
+    } else if (percentage >= 60) {
+      return `Buen trabajo con "${track}". Cada práctica te ayuda a mejorar. Sigue así.`;
+    } else {
+      return `No te preocupes por "${track}". Cada intento cuenta. Sigue practicando, tú puedes.`;
+    }
+  };
+  
+  // Mensaje al elegir otra canción
+  const anotherSongMessage = "Muy bien, vamos a practicar otra canción. Elige la que más te guste.";
+  
+  // Mensaje al volver al menú
+  const menuMessage = "De acuerdo, volvamos al menú principal. Elige el juego que prefieras.";
+  
+  // Mensaje de voz al cargar resultados - SOLO si no se ha hablado antes
+  useEffect(() => {
+    if (voiceEnabled && !hasSpoken) {
+      const timer = setTimeout(() => {
+        const voiceMessage = getVoiceMessage();
+        voiceService.speak(voiceMessage, true);
+        setHasSpoken(true);
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [voiceEnabled]);
+  
+  const toggleVoice = () => {
+    const newState = !voiceEnabled;
+    setVoiceEnabled(newState);
+    if (newState) {
+      setTimeout(() => voiceService.speak("Listo, ahora te hablaré para ayudarte.", true), 100);
+    } else {
+      setTimeout(() => voiceService.speak("Está bien, ya no hablaré. Si me necesitas, solo presiona el botón otra vez.", true), 100);
+    }
+  };
+  
+  const handleAnotherSong = () => {
+    if (voiceEnabled) {
+      voiceService.speak(anotherSongMessage, true);
+    }
+    setTimeout(() => navigate('/songs'), 1500);
+  };
+  
+  const handleMenu = () => {
+    if (voiceEnabled) {
+      voiceService.speak(menuMessage, true);
+    }
+    setTimeout(() => navigate('/menu'), 1500);
+  };
+  
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100">
+      
+      {/* Botón de voz flotante */}
+      <button
+        onClick={toggleVoice}
+        className={`fixed top-4 right-4 w-12 h-12 rounded-full shadow-md flex items-center justify-center transition-all z-20 ${
+          voiceEnabled 
+            ? 'bg-amber-500 hover:bg-amber-600 text-white' 
+            : 'bg-gray-300 hover:bg-gray-400 text-gray-600'
+        }`}
+        aria-label={voiceEnabled ? "Desactivar voz" : "Activar voz"}
+      >
+        {voiceEnabled ? (
+          <Volume2 className="w-6 h-6" />
+        ) : (
+          <VolumeX className="w-6 h-6" />
+        )}
+      </button>
       
       {/* Header mejorado */}
       <header className="sticky top-0 bg-white shadow-md border-b border-amber-200 z-10">
@@ -95,15 +174,18 @@ export function SessionSummary() {
 
         <div className="bg-white rounded-3xl p-8 shadow-xl mb-8 border-2 border-amber-200">
           
-          {/* Canción practicada */}
+          {/* Juego completado */}
           <div className="flex items-center gap-4 pb-6 border-b-2 border-amber-100 mb-6">
             <div className="w-16 h-16 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
               <Music2 className="w-8 h-8 text-amber-700" />
             </div>
             <div className="flex-1">
-              <p className="text-base text-amber-600 mb-1">Canción practicada</p>
-              <h3 className="text-2xl font-bold text-amber-900">{track}</h3>
-              {artist && <p className="text-lg text-amber-700">{artist}</p>}
+              <p className="text-base text-amber-600 mb-1">Juego completado</p>
+              <h3 className="text-2xl font-bold text-amber-900">
+                {gameType === 'order' ? 'Ordenar la canción' : 'Completar la letra'}
+              </h3>
+              {track && <p className="text-lg text-amber-700 mt-1">Canción: {track}</p>}
+              {artist && <p className="text-base text-amber-600">Artista: {artist}</p>}
             </div>
           </div>
           
@@ -168,11 +250,11 @@ export function SessionSummary() {
           </div>
         )}
         
-        {/* Botones de acción - grandes y claros */}
+        {/* Botones de acción */}
         <div className="space-y-4">
           
           <button
-            onClick={() => navigate('/songs')}
+            onClick={handleAnotherSong}
             className="w-full py-5 bg-amber-600 hover:bg-amber-700 text-white text-2xl font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3"
           >
             <Music2 className="w-7 h-7" />
@@ -180,7 +262,7 @@ export function SessionSummary() {
           </button>
           
           <button
-            onClick={() => navigate('/menu')}
+            onClick={handleMenu}
             className="w-full py-5 bg-white hover:bg-amber-50 text-amber-700 text-2xl font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all border-2 border-amber-300 flex items-center justify-center gap-3"
           >
             <Home className="w-7 h-7" />

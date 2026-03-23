@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MessageSquareQuote, Award, Home, ArrowLeft, Trophy, Sparkles, Heart } from 'lucide-react';
+import { MessageSquareQuote, Award, Home, ArrowLeft, Trophy, Sparkles, Heart, Volume2, VolumeX } from 'lucide-react';
+import { voiceService } from '../data/voiceService';
 
 export function ProverbsResults() {
   const navigate = useNavigate();
   const location = useLocation();
   const { correct, total } = location.state || { correct: 0, total: 0 };
+  
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [hasSpoken, setHasSpoken] = useState(false);
   
   const percentage = Math.round((correct / total) * 100);
   
@@ -56,8 +60,83 @@ export function ProverbsResults() {
   const message = getMessage();
   const IconComponent = message.icon;
   
+  // Mensajes de voz según resultado
+  const getVoiceMessage = () => {
+    if (percentage === 100) {
+      return "¡Perfecto! Te sabes todos los refranes. Qué bonito que los recuerdes. ¡Eres un experto en sabiduría popular!";
+    } else if (percentage >= 80) {
+      return "Excelente trabajo. Conoces muy bien estos dichos. La sabiduría popular vive en ti. ¡Muy bien!";
+    } else if (percentage >= 60) {
+      return "Muy bien. Recordaste la mayoría de los refranes. Con un poco más de práctica los tendrás perfectos.";
+    } else if (percentage >= 40) {
+      return "Buen trabajo. Cada refrán que recuerdas es un tesoro. Sigue practicando, vas por buen camino.";
+    } else {
+      return "No te preocupes. Cada vez que juegas aprendes un refrán nuevo. La práctica hace al maestro. ¡Sigue así!";
+    }
+  };
+  
+  // Mensaje al elegir jugar otra vez
+  const playAgainMessage = "Muy bien, vamos a jugar otra vez con más refranes. Diviértete.";
+  
+  // Mensaje al elegir otro juego
+  const otherGameMessage = "De acuerdo, vamos a elegir otro juego. Quédate con el que más te guste.";
+  
+  // Mensaje de voz al cargar resultados
+  useEffect(() => {
+    if (voiceEnabled && !hasSpoken) {
+      const timer = setTimeout(() => {
+        const voiceMessage = getVoiceMessage();
+        voiceService.speak(voiceMessage, true);
+        setHasSpoken(true);
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [voiceEnabled]);
+  
+  const toggleVoice = () => {
+    const newState = !voiceEnabled;
+    setVoiceEnabled(newState);
+    if (newState) {
+      setTimeout(() => voiceService.speak("Listo, ahora te hablaré para ayudarte.", true), 100);
+    } else {
+      setTimeout(() => voiceService.speak("Está bien, ya no hablaré. Si me necesitas, solo presiona el botón otra vez.", true), 100);
+    }
+  };
+  
+  const handlePlayAgain = () => {
+    if (voiceEnabled) {
+      voiceService.speak(playAgainMessage, true);
+    }
+    setTimeout(() => navigate('/proverbs/play'), 1500);
+  };
+  
+  const handleOtherGame = () => {
+    if (voiceEnabled) {
+      voiceService.speak(otherGameMessage, true);
+    }
+    setTimeout(() => navigate('/menu'), 1500);
+  };
+  
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100">
+      
+      {/* Botón de voz flotante */}
+      <button
+        onClick={toggleVoice}
+        className={`fixed top-4 right-4 w-12 h-12 rounded-full shadow-md flex items-center justify-center transition-all z-20 ${
+          voiceEnabled 
+            ? 'bg-amber-500 hover:bg-amber-600 text-white' 
+            : 'bg-gray-300 hover:bg-gray-400 text-gray-600'
+        }`}
+        aria-label={voiceEnabled ? "Desactivar voz" : "Activar voz"}
+      >
+        {voiceEnabled ? (
+          <Volume2 className="w-6 h-6" />
+        ) : (
+          <VolumeX className="w-6 h-6" />
+        )}
+      </button>
       
       {/* Header mejorado */}
       <header className="sticky top-0 bg-white shadow-md border-b border-amber-200 z-10">
@@ -106,7 +185,7 @@ export function ProverbsResults() {
           </p>
         </div>
         
-        {/* Tarjeta de resultados - más grande y legible */}
+        {/* Tarjeta de resultados */}
         <div className="bg-white rounded-3xl p-8 shadow-xl mb-8 border-2 border-amber-200">
           
           {/* Juego completado */}
@@ -178,11 +257,11 @@ export function ProverbsResults() {
           </div>
         </div>
         
-        {/* Botones de acción - grandes y claros */}
+        {/* Botones de acción */}
         <div className="space-y-4">
           
           <button
-            onClick={() => navigate('/proverbs/play')}
+            onClick={handlePlayAgain}
             className="w-full py-6 bg-amber-600 hover:bg-amber-700 text-white text-2xl font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3"
           >
             <MessageSquareQuote className="w-7 h-7" />
@@ -190,7 +269,7 @@ export function ProverbsResults() {
           </button>
           
           <button
-            onClick={() => navigate('/menu')}
+            onClick={handleOtherGame}
             className="w-full py-6 bg-white hover:bg-amber-50 text-amber-700 text-2xl font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all border-2 border-amber-300 flex items-center justify-center gap-3"
           >
             <Home className="w-7 h-7" />

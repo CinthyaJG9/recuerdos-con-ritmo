@@ -3,9 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   ArrowLeft, Shuffle, Check, X, Undo2, RotateCcw, 
   ChevronLeft, ChevronRight, HelpCircle, Lightbulb,
-  Sparkles, Loader2
+  Sparkles, Loader2, Volume2, VolumeX
 } from 'lucide-react';
 import { hintService } from '../data/hintService';
+import { voiceService } from '../data/voiceService';
 
 export function OrderGame() {
   const navigate = useNavigate();
@@ -24,6 +25,10 @@ export function OrderGame() {
   const [score, setScore] = useState(0);
   const [showHint, setShowHint] = useState(false);
   
+  // Estado para voz
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [hasSpokenWelcome, setHasSpokenWelcome] = useState(false);
+  
   // Estados para pistas con IA
   const [aiHint, setAiHint] = useState<string | null>(null);
   const [isGeneratingHint, setIsGeneratingHint] = useState(false);
@@ -31,6 +36,28 @@ export function OrderGame() {
   
   // Estado para instrucciones
   const [showInstructions, setShowInstructions] = useState(false);
+  
+  // Mensajes de bienvenida
+  const welcomeMessages = [
+    "Vamos a ordenar los versos de esta canción. Toca cada verso en el orden correcto.",
+    "Ordena los versos como van en la canción. Puedes usar los botones o deshacer si te equivocas.",
+    "Coloca cada verso en su lugar. Escucha la melodía en tu mente para acordarte del orden."
+  ];
+  
+  // Mensajes al completar una ronda
+  const roundCompleteMessages = {
+    correct: "¡Muy bien! Has ordenado bien esta estrofa. Vamos por la siguiente.",
+    incorrect: "Casi lo logras. El orden correcto era..."
+  };
+  
+  // Mensaje al terminar el juego
+  const finalMessage = "¡Excelente! Has terminado de ordenar todas las estrofas. Vamos a ver tu resultado.";
+  
+  // Mensajes de voz
+  const voiceMessages = {
+    on: "Listo, ahora te hablaré para ayudarte.",
+    off: "Está bien, ya no hablaré. Si me necesitas, solo presiona el botón otra vez."
+  };
   
   // Validación inicial
   useEffect(() => {
@@ -40,6 +67,19 @@ export function OrderGame() {
     }
     loadRound(0);
   }, []);
+  
+  // Bienvenida al cargar el juego
+  useEffect(() => {
+    if (!isLoading() && track && voiceEnabled && !hasSpokenWelcome) {
+      const timer = setTimeout(() => {
+        const randomMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+        voiceService.speak(randomMessage, true);
+        setHasSpokenWelcome(true);
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [track, voiceEnabled, questions]);
   
   // Auto-avance después de 3 segundos
   useEffect(() => {
@@ -62,6 +102,10 @@ export function OrderGame() {
       if (timer) clearInterval(timer);
     };
   }, [showFeedback]);
+  
+  const isLoading = () => {
+    return !track || !questions || !Array.isArray(questions) || questions.length === 0;
+  };
   
   const loadRound = (roundIndex: number) => {
     const round = questions[roundIndex];
@@ -121,10 +165,41 @@ export function OrderGame() {
       setScore(prev => prev + 1);
     }
     setShowFeedback(true);
+    
+    // Voz al completar la ronda
+    if (voiceEnabled) {
+      if (correct) {
+        voiceService.speak(roundCompleteMessages.correct, true);
+      } else {
+        voiceService.speak(roundCompleteMessages.incorrect, true);
+        // Decir el orden correcto después de un pequeño retraso
+        setTimeout(() => {
+          const correctOrderText = originalVerses.map((v, i) => `${i + 1}. ${v}`).join(', ');
+          voiceService.speak(`El orden correcto era: ${correctOrderText}`, true);
+        }, 1500);
+      }
+    }
   };
   
-  const handleNextRound = () => {
-    if (currentRound === questions.length - 1) {
+// En OrderGame.tsx, al final del juego
+const handleNextRound = () => {
+  if (currentRound === questions.length - 1) {
+    if (voiceEnabled) {
+      voiceService.speak(finalMessage, true);
+      // Pequeño retraso para que termine de hablar antes de navegar
+      setTimeout(() => {
+        navigate('/summary', {
+          state: {
+            track: track.title,
+            artist: track.artist,
+            correct: score,
+            total: questions.length,
+            gameType: 'order',
+            voiceAlreadySpoken: true  // <-- Flag importante
+          }
+        });
+      }, 2500); // Espera a que termine el mensaje
+    } else {
       navigate('/summary', {
         state: {
           track: track.title,
@@ -134,12 +209,13 @@ export function OrderGame() {
           gameType: 'order'
         }
       });
-    } else {
-      const nextRound = currentRound + 1;
-      setCurrentRound(nextRound);
-      loadRound(nextRound);
     }
-  };
+  } else {
+    const nextRound = currentRound + 1;
+    setCurrentRound(nextRound);
+    loadRound(nextRound);
+  }
+};
   
   const handlePreviousRound = () => {
     if (currentRound > 0) {
@@ -158,16 +234,25 @@ export function OrderGame() {
     setShowHint(false);
     setAiHint(null);
   };
-
+  
+  const toggleVoice = () => {
+    const newState = !voiceEnabled;
+    setVoiceEnabled(newState);
+    if (newState) {
+      setTimeout(() => voiceService.speak(voiceMessages.on, true), 100);
+    } else {
+      setTimeout(() => voiceService.speak(voiceMessages.off, true), 100);
+    }
+  };
+  
   const toggleInstructions = () => {
     setShowInstructions(!showInstructions);
   };
-
+  
   // ============================================
-  // PRECARGADO DE PISTAS PARA ORDER GAME
+  // PRECARGADO DE PISTAS
   // ============================================
   useEffect(() => {
-    // Generar pista de la ronda actual apenas cargue
     const preloadHints = async () => {
       if (!questions.length || !questions[currentRound]) return;
       
@@ -190,7 +275,6 @@ export function OrderGame() {
         }
       }
 
-      // Pre-generar la de la siguiente ronda también
       if (currentRound < questions.length - 1) {
         const nextRound = questions[currentRound + 1];
         const nextKey = `${track.title}-round-${currentRound + 1}`;
@@ -224,7 +308,6 @@ export function OrderGame() {
     const roundData = questions[currentRound];
     const cacheKey = `${track.title}-round-${currentRound}`;
     
-    // Si ya tenemos la pista en caché, usarla inmediatamente
     if (hintCache[cacheKey]) {
       console.log('Usando pista precargada');
       setAiHint(hintCache[cacheKey]);
@@ -249,7 +332,6 @@ export function OrderGame() {
     } catch (error) {
       console.error('Error generando pista con IA:', error);
       
-      // Pista de respaldo rápida
       const fallbackHints = [
         "El siguiente verso continúa la idea del anterior",
         "Presta atención a cómo termina el verso anterior",
@@ -265,7 +347,7 @@ export function OrderGame() {
     }
   };
   
-  if (!track || !questions || !Array.isArray(questions) || questions.length === 0) {
+  if (isLoading()) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100 flex items-center justify-center">
         <div className="text-center">
@@ -364,6 +446,23 @@ export function OrderGame() {
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100">
+      
+      {/* Botón de voz flotante */}
+      <button
+        onClick={toggleVoice}
+        className={`fixed top-4 right-4 w-12 h-12 rounded-full shadow-md flex items-center justify-center transition-all z-20 ${
+          voiceEnabled 
+            ? 'bg-amber-500 hover:bg-amber-600 text-white' 
+            : 'bg-gray-300 hover:bg-gray-400 text-gray-600'
+        }`}
+        aria-label={voiceEnabled ? "Desactivar voz" : "Activar voz"}
+      >
+        {voiceEnabled ? (
+          <Volume2 className="w-6 h-6" />
+        ) : (
+          <VolumeX className="w-6 h-6" />
+        )}
+      </button>
       
       {/* Botón de ayuda flotante */}
       <button
