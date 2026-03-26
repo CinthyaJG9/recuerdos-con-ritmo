@@ -51,9 +51,6 @@ export function GameMenu() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100">
       
-      {/* Botón de voz flotante - ELIMINAR porque ya tenemos el global en App */}
-      {/* Ya no necesitas este botón, se renderiza globalmente desde App.tsx */}
-      
       <header className="sticky top-0 bg-white shadow-md border-b border-amber-200 z-10">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <h1 className="text-2xl sm:text-3xl font-bold text-amber-900">Juegos</h1>

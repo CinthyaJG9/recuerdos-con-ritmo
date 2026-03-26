@@ -6,7 +6,7 @@ import { useVoice } from '../../context/VoiceContext';
 
 export function Welcome() {
   const navigate = useNavigate();
-  const { voiceEnabled, toggleVoice, speak } = useVoice();
+  const { voiceEnabled, toggleVoice, speak, isToggling } = useVoice();
   const [hasSpoken, setHasSpoken] = useState(false);
 
   // Mensajes de bienvenida
@@ -30,7 +30,7 @@ export function Welcome() {
     }, 500);
     
     return () => clearTimeout(timer);
-  }, [voiceEnabled]);
+  }, [voiceEnabled, isToggling]);
 
   const handleStart = () => {
     speak(startMessage);
@@ -40,24 +40,6 @@ export function Welcome() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100 flex items-center justify-center p-4 sm:p-6">
       
-      {/* Botón de voz flotante */}
-      <button
-        onClick={toggleVoice}
-        className={`fixed top-4 right-4 w-12 h-12 rounded-full shadow-md flex items-center justify-center transition-all z-20 ${
-          voiceEnabled 
-            ? 'bg-amber-500 hover:bg-amber-600 text-white' 
-            : 'bg-gray-300 hover:bg-gray-400 text-gray-600'
-        }`}
-        aria-label={voiceEnabled ? "Desactivar voz" : "Activar voz"}
-      >
-        {voiceEnabled ? (
-          <Volume2 className="w-6 h-6" />
-        ) : (
-          <VolumeX className="w-6 h-6" />
-        )}
-      </button>
-      
-      {/* Resto del componente... */}
       <div className="max-w-2xl w-full bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl p-8 sm:p-10 border-2 border-amber-200">
         <div className="text-center">
           {/* Logo */}

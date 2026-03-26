@@ -431,23 +431,6 @@ export function OrderGame() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100">
       
-      {/* Botón de voz flotante */}
-      <button
-        onClick={toggleVoice}
-        className={`fixed top-4 right-4 w-12 h-12 rounded-full shadow-md flex items-center justify-center transition-all z-20 ${
-          voiceEnabled 
-            ? 'bg-amber-500 hover:bg-amber-600 text-white' 
-            : 'bg-gray-300 hover:bg-gray-400 text-gray-600'
-        }`}
-        aria-label={voiceEnabled ? "Desactivar voz" : "Activar voz"}
-      >
-        {voiceEnabled ? (
-          <Volume2 className="w-6 h-6" />
-        ) : (
-          <VolumeX className="w-6 h-6" />
-        )}
-      </button>
-      
       {/* Botón de ayuda flotante */}
       <button
         onClick={toggleInstructions}

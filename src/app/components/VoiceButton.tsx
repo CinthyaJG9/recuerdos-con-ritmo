@@ -1,6 +1,6 @@
 import React from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
-import { useVoice } from '../context/VoiceContext';
+import { useVoice } from '../../context/VoiceContext';
 
 export function VoiceButton() {
   const { voiceEnabled, toggleVoice } = useVoice();
@@ -8,13 +8,17 @@ export function VoiceButton() {
   return (
     <button
       onClick={toggleVoice}
-      className="fixed top-4 right-4 w-12 h-12 rounded-full shadow-md flex items-center justify-center transition-all z-50 bg-amber-500 hover:bg-amber-600 text-white"
+      className={`fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all z-50 ${
+        voiceEnabled
+          ? 'bg-amber-500 hover:bg-amber-600 text-white'
+          : 'bg-gray-300 hover:bg-gray-400 text-gray-600'
+      }`}
       aria-label={voiceEnabled ? "Desactivar voz" : "Activar voz"}
     >
       {voiceEnabled ? (
-        <Volume2 className="w-6 h-6" />
+        <Volume2 className="w-7 h-7" />
       ) : (
-        <VolumeX className="w-6 h-6" />
+        <VolumeX className="w-7 h-7" />
       )}
     </button>
   );

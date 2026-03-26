@@ -13,7 +13,7 @@ function App() {
   return (
     <VoiceProvider>
       <RouterProvider router={router} />
-      
+      <VoiceButton />
     </VoiceProvider>
   );
 }
