@@ -11,7 +11,7 @@ import { ProgressIndicator } from '../components/ProgressIndicator';
 
 export function ArtistQuizPlay() {
   const navigate = useNavigate();
-  const { voiceEnabled, toggleVoice, speak } = useVoice();
+  const { voiceEnabled, toggleVoice, speak, isToggling } = useVoice();
   const [questions, setQuestions] = useState<ArtistQuestion[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -74,7 +74,7 @@ export function ArtistQuizPlay() {
   
   // Bienvenida al cargar el juego
   useEffect(() => {
-    if (!isLoading && questions.length > 0 && voiceEnabled && !hasSpokenWelcome) {
+    if (!isLoading && questions.length > 0 && voiceEnabled && !hasSpokenWelcome && !isToggling) {
       const timer = setTimeout(() => {
         const randomMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
         speak(randomMessage);

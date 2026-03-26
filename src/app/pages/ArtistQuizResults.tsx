@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Mic2, Award, Home, ArrowLeft, Trophy, Sparkles, Heart, Volume2, VolumeX } from 'lucide-react';
-import { voiceService } from '../data/voiceService';
+import { useVoice } from '../../context/VoiceContext';
 
 export function ArtistQuizResults() {
   const navigate = useNavigate();
   const location = useLocation();
   const { correct, total } = location.state || { correct: 0, total: 0 };
   
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const { voiceEnabled, toggleVoice, speak, isToggling } = useVoice();
   const [hasSpoken, setHasSpoken] = useState(false);
   
   const percentage = Math.round((correct / total) * 100);
@@ -16,7 +16,7 @@ export function ArtistQuizResults() {
   const getMessage = () => {
     if (percentage === 100) {
       return {
-        title: '¡Increíble!',
+        title: 'Increíble',
         subtitle: 'Conoces muy bien a todos los artistas',
         icon: Trophy,
         color: 'text-yellow-600',
@@ -24,7 +24,7 @@ export function ArtistQuizResults() {
       };
     } else if (percentage >= 80) {
       return {
-        title: '¡Excelente!',
+        title: 'Excelente',
         subtitle: 'Memoria musical perfecta',
         icon: Award,
         color: 'text-green-600',
@@ -32,7 +32,7 @@ export function ArtistQuizResults() {
       };
     } else if (percentage >= 60) {
       return {
-        title: '¡Muy bien!',
+        title: 'Muy bien',
         subtitle: 'Conoces muchas de estas canciones',
         icon: Sparkles,
         color: 'text-blue-600',
@@ -40,7 +40,7 @@ export function ArtistQuizResults() {
       };
     } else if (percentage >= 40) {
       return {
-        title: '¡Buen trabajo!',
+        title: 'Buen trabajo',
         subtitle: 'Cada juego te ayuda a recordar más',
         icon: Mic2,
         color: 'text-purple-600',
@@ -48,7 +48,7 @@ export function ArtistQuizResults() {
       };
     } else {
       return {
-        title: '¡Sigue así!',
+        title: 'Sigue así',
         subtitle: 'Es una linda forma de recordar',
         icon: Heart,
         color: 'text-pink-600',
@@ -63,15 +63,15 @@ export function ArtistQuizResults() {
   // Mensajes de voz según resultado
   const getVoiceMessage = () => {
     if (percentage === 100) {
-      return "¡Increíble! Te sabes todos los artistas. Qué bonito que recuerdes quién cantaba cada canción. ¡Eres un experto en música!";
+      return "Increíble. Te sabes todos los artistas. Qué bonito que recuerdes quién cantaba cada canción. Eres un experto en música.";
     } else if (percentage >= 80) {
-      return "Excelente trabajo. Tienes una memoria musical perfecta. Conoces muy bien a estos artistas. ¡Muy bien!";
+      return "Excelente trabajo. Tienes una memoria musical perfecta. Conoces muy bien a estos artistas. Muy bien.";
     } else if (percentage >= 60) {
       return "Muy bien. Conoces muchas de estas canciones. Con un poco más de práctica las recordarás todas.";
     } else if (percentage >= 40) {
       return "Buen trabajo. Cada juego te ayuda a recordar más. Sigue practicando, vas por buen camino.";
     } else {
-      return "No te preocupes. Cada vez que juegas aprendes un artista nuevo. La música está llena de sorpresas. ¡Sigue así!";
+      return "No te preocupes. Cada vez que juegas aprendes un artista nuevo. La música está llena de sorpresas. Sigue así.";
     }
   };
   
@@ -83,10 +83,10 @@ export function ArtistQuizResults() {
   
   // Mensaje de voz al cargar resultados
   useEffect(() => {
-    if (voiceEnabled && !hasSpoken) {
+    if (voiceEnabled && !hasSpoken && !isToggling) {
       const timer = setTimeout(() => {
         const voiceMessage = getVoiceMessage();
-        voiceService.speak(voiceMessage, true);
+        speak(voiceMessage);
         setHasSpoken(true);
       }, 500);
       
@@ -94,49 +94,19 @@ export function ArtistQuizResults() {
     }
   }, [voiceEnabled]);
   
-  const toggleVoice = () => {
-    const newState = !voiceEnabled;
-    setVoiceEnabled(newState);
-    if (newState) {
-      setTimeout(() => voiceService.speak("Listo, ahora te hablaré para ayudarte.", true), 100);
-    } else {
-      setTimeout(() => voiceService.speak("Está bien, ya no hablaré. Si me necesitas, solo presiona el botón otra vez.", true), 100);
-    }
-  };
-  
   const handlePlayAgain = () => {
-    if (voiceEnabled) {
-      voiceService.speak(playAgainMessage, true);
-    }
+    speak(playAgainMessage);
     setTimeout(() => navigate('/artist-quiz/play'), 1500);
   };
   
   const handleOtherGame = () => {
-    if (voiceEnabled) {
-      voiceService.speak(otherGameMessage, true);
-    }
+    speak(otherGameMessage);
     setTimeout(() => navigate('/menu'), 1500);
   };
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100">
-      
-      {/* Botón de voz flotante */}
-      <button
-        onClick={toggleVoice}
-        className={`fixed top-4 right-4 w-12 h-12 rounded-full shadow-md flex items-center justify-center transition-all z-20 ${
-          voiceEnabled 
-            ? 'bg-amber-500 hover:bg-amber-600 text-white' 
-            : 'bg-gray-300 hover:bg-gray-400 text-gray-600'
-        }`}
-        aria-label={voiceEnabled ? "Desactivar voz" : "Activar voz"}
-      >
-        {voiceEnabled ? (
-          <Volume2 className="w-6 h-6" />
-        ) : (
-          <VolumeX className="w-6 h-6" />
-        )}
-      </button>
+
       
       {/* Header mejorado */}
       <header className="sticky top-0 bg-white shadow-md border-b border-amber-200 z-10">
@@ -231,8 +201,8 @@ export function ArtistQuizResults() {
           {/* Mensaje motivador según resultado */}
           <div className={`${message.bgColor} rounded-xl p-5 text-center`}>
             <p className={`text-lg ${message.color} font-medium`}>
-              {percentage === 100 && "¡Eres un experto en música!"}
-              {percentage >= 80 && percentage < 100 && "¡Casi perfecto! Tienes muy buena memoria musical."}
+              {percentage === 100 && "Eres un experto en música"}
+              {percentage >= 80 && percentage < 100 && "Casi perfecto. Tienes muy buena memoria musical."}
               {percentage >= 60 && percentage < 80 && "Buen trabajo, reconoces muchas canciones clásicas."}
               {percentage >= 40 && percentage < 60 && "Sigue practicando, cada canción tiene su historia."}
               {percentage < 40 && "Cada intento cuenta. Los grandes artistas nunca se olvidan."}
@@ -280,7 +250,7 @@ export function ArtistQuizResults() {
         
         {/* Nota al pie */}
         <p className="text-center text-amber-500 text-lg mt-6">
-          ¿Quién cantaba estas canciones? ¡Sigue descubriendo más!
+          ¿Quién cantaba estas canciones? Sigue descubriendo más.
         </p>
         
       </main>

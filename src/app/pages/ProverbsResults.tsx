@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MessageSquareQuote, Award, Home, ArrowLeft, Trophy, Sparkles, Heart, Volume2, VolumeX } from 'lucide-react';
-import { voiceService } from '../data/voiceService';
+import { useVoice } from '../../context/VoiceContext';
 
 export function ProverbsResults() {
   const navigate = useNavigate();
   const location = useLocation();
   const { correct, total } = location.state || { correct: 0, total: 0 };
   
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const { voiceEnabled, toggleVoice, speak, isToggling} = useVoice();
   const [hasSpoken, setHasSpoken] = useState(false);
   
   const percentage = Math.round((correct / total) * 100);
@@ -16,7 +16,7 @@ export function ProverbsResults() {
   const getMessage = () => {
     if (percentage === 100) {
       return {
-        title: '¡Perfecto!',
+        title: 'Perfecto',
         subtitle: 'Conoces muy bien todos los refranes',
         icon: Trophy,
         color: 'text-yellow-600',
@@ -24,7 +24,7 @@ export function ProverbsResults() {
       };
     } else if (percentage >= 80) {
       return {
-        title: '¡Excelente!',
+        title: 'Excelente',
         subtitle: 'La sabiduría popular vive en ti',
         icon: Award,
         color: 'text-green-600',
@@ -32,7 +32,7 @@ export function ProverbsResults() {
       };
     } else if (percentage >= 60) {
       return {
-        title: '¡Muy bien!',
+        title: 'Muy bien',
         subtitle: 'Recordaste muchos de estos refranes',
         icon: Sparkles,
         color: 'text-blue-600',
@@ -40,7 +40,7 @@ export function ProverbsResults() {
       };
     } else if (percentage >= 40) {
       return {
-        title: '¡Buen trabajo!',
+        title: 'Buen trabajo',
         subtitle: 'Cada refrán tiene su historia',
         icon: MessageSquareQuote,
         color: 'text-amber-600',
@@ -48,7 +48,7 @@ export function ProverbsResults() {
       };
     } else {
       return {
-        title: '¡Sigue practicando!',
+        title: 'Sigue practicando',
         subtitle: 'Es lindo recordar estos dichos populares',
         icon: Heart,
         color: 'text-orange-600',
@@ -63,15 +63,15 @@ export function ProverbsResults() {
   // Mensajes de voz según resultado
   const getVoiceMessage = () => {
     if (percentage === 100) {
-      return "¡Perfecto! Te sabes todos los refranes. Qué bonito que los recuerdes. ¡Eres un experto en sabiduría popular!";
+      return "Perfecto. Te sabes todos los refranes. Qué bonito que los recuerdes. Eres un experto en sabiduría popular.";
     } else if (percentage >= 80) {
-      return "Excelente trabajo. Conoces muy bien estos dichos. La sabiduría popular vive en ti. ¡Muy bien!";
+      return "Excelente trabajo. Conoces muy bien estos dichos. La sabiduría popular vive en ti. Muy bien.";
     } else if (percentage >= 60) {
       return "Muy bien. Recordaste la mayoría de los refranes. Con un poco más de práctica los tendrás perfectos.";
     } else if (percentage >= 40) {
       return "Buen trabajo. Cada refrán que recuerdas es un tesoro. Sigue practicando, vas por buen camino.";
     } else {
-      return "No te preocupes. Cada vez que juegas aprendes un refrán nuevo. La práctica hace al maestro. ¡Sigue así!";
+      return "No te preocupes. Cada vez que juegas aprendes un refrán nuevo. La práctica hace al maestro. Sigue así.";
     }
   };
   
@@ -83,10 +83,10 @@ export function ProverbsResults() {
   
   // Mensaje de voz al cargar resultados
   useEffect(() => {
-    if (voiceEnabled && !hasSpoken) {
+    if (voiceEnabled && !hasSpoken && !isToggling) {
       const timer = setTimeout(() => {
         const voiceMessage = getVoiceMessage();
-        voiceService.speak(voiceMessage, true);
+        speak(voiceMessage);
         setHasSpoken(true);
       }, 500);
       
@@ -94,27 +94,13 @@ export function ProverbsResults() {
     }
   }, [voiceEnabled]);
   
-  const toggleVoice = () => {
-    const newState = !voiceEnabled;
-    setVoiceEnabled(newState);
-    if (newState) {
-      setTimeout(() => voiceService.speak("Listo, ahora te hablaré para ayudarte.", true), 100);
-    } else {
-      setTimeout(() => voiceService.speak("Está bien, ya no hablaré. Si me necesitas, solo presiona el botón otra vez.", true), 100);
-    }
-  };
-  
   const handlePlayAgain = () => {
-    if (voiceEnabled) {
-      voiceService.speak(playAgainMessage, true);
-    }
+    speak(playAgainMessage);
     setTimeout(() => navigate('/proverbs/play'), 1500);
   };
   
   const handleOtherGame = () => {
-    if (voiceEnabled) {
-      voiceService.speak(otherGameMessage, true);
-    }
+    speak(otherGameMessage);
     setTimeout(() => navigate('/menu'), 1500);
   };
   
@@ -231,8 +217,8 @@ export function ProverbsResults() {
           {/* Mensaje motivador personalizado según resultado */}
           <div className={`${message.bgColor} rounded-xl p-5 text-center`}>
             <p className={`text-lg ${message.color} font-medium`}>
-              {percentage === 100 && "¡Eres un experto en refranes mexicanos!"}
-              {percentage >= 80 && percentage < 100 && "¡Casi perfecto! Conoces muy bien la sabiduría popular."}
+              {percentage === 100 && "Eres un experto en refranes mexicanos"}
+              {percentage >= 80 && percentage < 100 && "Casi perfecto. Conoces muy bien la sabiduría popular."}
               {percentage >= 60 && percentage < 80 && "Buen trabajo, cada refrán es una enseñanza de nuestros abuelos."}
               {percentage >= 40 && percentage < 60 && "Sigue practicando, los refranes son parte de nuestra cultura."}
               {percentage < 40 && "Cada intento cuenta. Los refranes son tesoros de la memoria colectiva."}

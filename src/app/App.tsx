@@ -6,10 +6,14 @@ import { useState, useEffect } from 'react';
 import { voiceService } from './data/voiceService';
 
 
+import { VoiceButton } from './components/VoiceButton';
+
+
 function App() {
   return (
     <VoiceProvider>
       <RouterProvider router={router} />
+      
     </VoiceProvider>
   );
 }

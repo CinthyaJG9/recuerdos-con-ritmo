@@ -13,7 +13,7 @@ class VoiceService {
       if (typeof (window as any).puter !== 'undefined') {
         this.isReady = true;
         clearInterval(checkPuter);
-        console.log('✅ VoiceService listo (Puter.js + Amazon Polly)');
+        console.log('VoiceService listo (Puter.js + Amazon Polly)');
       }
     }, 100);
   }
@@ -23,7 +23,7 @@ class VoiceService {
     if (!this.isReady) {
       await new Promise(resolve => setTimeout(resolve, 500));
       if (!this.isReady) {
-        console.log('⚠️ Puter.js no disponible, usando fallback');
+        console.log(' Puter.js no disponible, usando fallback');
         this.fallbackSpeak(text);
         return;
       }

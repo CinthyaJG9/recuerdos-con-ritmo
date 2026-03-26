@@ -22,7 +22,7 @@ export function Welcome() {
   // Bienvenida al cargar la página
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (voiceEnabled && !hasSpoken) {
+      if (voiceEnabled && !hasSpoken && !isToggling) {
         const randomMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
         speak(randomMessage);
         setHasSpoken(true);

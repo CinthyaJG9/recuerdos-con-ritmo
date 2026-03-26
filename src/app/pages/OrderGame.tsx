@@ -6,7 +6,7 @@ import {
   Sparkles, Loader2, Volume2, VolumeX
 } from 'lucide-react';
 import { hintService } from '../data/hintService';
-import { voiceService } from '../data/voiceService';
+import { useVoice } from '../../context/VoiceContext';
 
 export function OrderGame() {
   const navigate = useNavigate();
@@ -25,8 +25,8 @@ export function OrderGame() {
   const [score, setScore] = useState(0);
   const [showHint, setShowHint] = useState(false);
   
-  // Estado para voz
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  // Estado para voz - usando contexto global
+  const { voiceEnabled, toggleVoice, speak, isToggling } = useVoice();
   const [hasSpokenWelcome, setHasSpokenWelcome] = useState(false);
   
   // Estados para pistas con IA
@@ -46,18 +46,12 @@ export function OrderGame() {
   
   // Mensajes al completar una ronda
   const roundCompleteMessages = {
-    correct: "¡Muy bien! Has ordenado bien esta estrofa. Vamos por la siguiente.",
+    correct: "Muy bien. Has ordenado bien esta estrofa. Vamos por la siguiente.",
     incorrect: "Casi lo logras. El orden correcto era..."
   };
   
   // Mensaje al terminar el juego
-  const finalMessage = "¡Excelente! Has terminado de ordenar todas las estrofas. Vamos a ver tu resultado.";
-  
-  // Mensajes de voz
-  const voiceMessages = {
-    on: "Listo, ahora te hablaré para ayudarte.",
-    off: "Está bien, ya no hablaré. Si me necesitas, solo presiona el botón otra vez."
-  };
+  const finalMessage = "Excelente. Has terminado de ordenar todas las estrofas. Vamos a ver tu resultado.";
   
   // Validación inicial
   useEffect(() => {
@@ -70,10 +64,10 @@ export function OrderGame() {
   
   // Bienvenida al cargar el juego
   useEffect(() => {
-    if (!isLoading() && track && voiceEnabled && !hasSpokenWelcome) {
+    if (!isLoading() && track && voiceEnabled && !hasSpokenWelcome && !isToggling) {
       const timer = setTimeout(() => {
         const randomMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
-        voiceService.speak(randomMessage, true);
+        speak(randomMessage);
         setHasSpokenWelcome(true);
       }, 500);
       
@@ -169,53 +163,53 @@ export function OrderGame() {
     // Voz al completar la ronda
     if (voiceEnabled) {
       if (correct) {
-        voiceService.speak(roundCompleteMessages.correct, true);
+        speak(roundCompleteMessages.correct);
       } else {
-        voiceService.speak(roundCompleteMessages.incorrect, true);
+        speak(roundCompleteMessages.incorrect);
         // Decir el orden correcto después de un pequeño retraso
         setTimeout(() => {
           const correctOrderText = originalVerses.map((v, i) => `${i + 1}. ${v}`).join(', ');
-          voiceService.speak(`El orden correcto era: ${correctOrderText}`, true);
+          speak(`El orden correcto era: ${correctOrderText}`);
         }, 1500);
       }
     }
   };
   
-// En OrderGame.tsx, al final del juego
-const handleNextRound = () => {
-  if (currentRound === questions.length - 1) {
-    if (voiceEnabled) {
-      voiceService.speak(finalMessage, true);
-      // Pequeño retraso para que termine de hablar antes de navegar
-      setTimeout(() => {
+  // En OrderGame.tsx, al final del juego
+  const handleNextRound = () => {
+    if (currentRound === questions.length - 1) {
+      if (voiceEnabled) {
+        speak(finalMessage);
+        // Pequeño retraso para que termine de hablar antes de navegar
+        setTimeout(() => {
+          navigate('/summary', {
+            state: {
+              track: track.title,
+              artist: track.artist,
+              correct: score,
+              total: questions.length,
+              gameType: 'order',
+              voiceAlreadySpoken: true
+            }
+          });
+        }, 2500);
+      } else {
         navigate('/summary', {
           state: {
             track: track.title,
             artist: track.artist,
             correct: score,
             total: questions.length,
-            gameType: 'order',
-            voiceAlreadySpoken: true  // <-- Flag importante
+            gameType: 'order'
           }
         });
-      }, 2500); // Espera a que termine el mensaje
+      }
     } else {
-      navigate('/summary', {
-        state: {
-          track: track.title,
-          artist: track.artist,
-          correct: score,
-          total: questions.length,
-          gameType: 'order'
-        }
-      });
+      const nextRound = currentRound + 1;
+      setCurrentRound(nextRound);
+      loadRound(nextRound);
     }
-  } else {
-    const nextRound = currentRound + 1;
-    setCurrentRound(nextRound);
-    loadRound(nextRound);
-  }
-};
+  };
   
   const handlePreviousRound = () => {
     if (currentRound > 0) {
@@ -233,16 +227,6 @@ const handleNextRound = () => {
     setShowFeedback(false);
     setShowHint(false);
     setAiHint(null);
-  };
-  
-  const toggleVoice = () => {
-    const newState = !voiceEnabled;
-    setVoiceEnabled(newState);
-    if (newState) {
-      setTimeout(() => voiceService.speak(voiceMessages.on, true), 100);
-    } else {
-      setTimeout(() => voiceService.speak(voiceMessages.off, true), 100);
-    }
   };
   
   const toggleInstructions = () => {
@@ -388,7 +372,7 @@ const handleNextRound = () => {
               <h2 className={`text-4xl md:text-5xl font-bold mb-2 ${
                 isCorrect ? 'text-green-700' : 'text-red-600'
               }`}>
-                {isCorrect ? '¡Muy bien!' : 'Casi lo logras'}
+                {isCorrect ? 'Muy bien' : 'Casi lo logras'}
               </h2>
               
               {!isCorrect && (
@@ -619,7 +603,7 @@ const handleNextRound = () => {
             {availableIndices.length === 0 ? (
               <div className="bg-green-50 rounded-xl p-6 text-center border-2 border-green-300">
                 <p className="text-green-600 text-xl font-bold">
-                  ¡Usaste todos los versos!
+                  Usaste todos los versos
                 </p>
               </div>
             ) : (

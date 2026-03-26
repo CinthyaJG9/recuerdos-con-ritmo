@@ -5,7 +5,7 @@ import { useVoice } from '../../context/VoiceContext';
 
 export function GameMenu() {
   const navigate = useNavigate();
-  const { voiceEnabled, toggleVoice, speak } = useVoice();
+  const { voiceEnabled, toggleVoice, speak, isToggling } = useVoice(); 
   const [hasSpokenWelcome, setHasSpokenWelcome] = useState(false);
   
   const welcomeMessages = [
@@ -25,7 +25,7 @@ export function GameMenu() {
   
   // Bienvenida al cargar el menú
   useEffect(() => {
-    if (voiceEnabled && !hasSpokenWelcome) {
+    if (voiceEnabled && !hasSpokenWelcome && !isToggling) {
       const timer = setTimeout(() => {
         const randomMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
         speak(randomMessage);
@@ -33,7 +33,7 @@ export function GameMenu() {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [voiceEnabled]);
+  }, [voiceEnabled, isToggling]); // <-- AGREGAR isToggling como dependencia
   
   const handleGameSelect = (gameType: 'complete' | 'artist' | 'proverbs') => {
     speak(gameMessages[gameType]);
@@ -51,22 +51,8 @@ export function GameMenu() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-100">
       
-      {/* Botón de voz flotante */}
-      <button
-        onClick={toggleVoice}
-        className={`fixed top-4 right-4 w-12 h-12 rounded-full shadow-md flex items-center justify-center transition-all z-20 ${
-          voiceEnabled 
-            ? 'bg-amber-500 hover:bg-amber-600 text-white' 
-            : 'bg-gray-300 hover:bg-gray-400 text-gray-600'
-        }`}
-        aria-label={voiceEnabled ? "Desactivar voz" : "Activar voz"}
-      >
-        {voiceEnabled ? (
-          <Volume2 className="w-6 h-6" />
-        ) : (
-          <VolumeX className="w-6 h-6" />
-        )}
-      </button>
+      {/* Botón de voz flotante - ELIMINAR porque ya tenemos el global en App */}
+      {/* Ya no necesitas este botón, se renderiza globalmente desde App.tsx */}
       
       <header className="sticky top-0 bg-white shadow-md border-b border-amber-200 z-10">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">

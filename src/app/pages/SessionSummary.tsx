@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Music2, Award, Clock, Home, Trophy, Sparkles, Volume2, VolumeX } from 'lucide-react';
-import { voiceService } from '../data/voiceService';
+import { useVoice } from '../../context/VoiceContext';
 
 export function SessionSummary() {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ export function SessionSummary() {
     voiceAlreadySpoken: false
   };
   
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const { voiceEnabled, toggleVoice, speak , isToggling} = useVoice();
   const [hasSpoken, setHasSpoken] = useState(voiceAlreadySpoken);
   
   const percentage = Math.round((correct / total) * 100);
@@ -23,7 +23,7 @@ export function SessionSummary() {
   const getMessage = () => {
     if (percentage === 100) {
       return {
-        title: '¡Excelente!',
+        title: 'Excelente',
         subtitle: 'Conoces perfectamente esta canción',
         icon: Trophy,
         color: 'text-yellow-600',
@@ -31,7 +31,7 @@ export function SessionSummary() {
       };
     } else if (percentage >= 80) {
       return {
-        title: '¡Muy bien!',
+        title: 'Muy bien',
         subtitle: 'Lo estás haciendo de maravilla',
         icon: Award,
         color: 'text-green-600',
@@ -39,7 +39,7 @@ export function SessionSummary() {
       };
     } else if (percentage >= 60) {
       return {
-        title: '¡Buen trabajo!',
+        title: 'Buen trabajo',
         subtitle: 'Cada práctica te ayuda a mejorar',
         icon: Sparkles,
         color: 'text-blue-600',
@@ -47,7 +47,7 @@ export function SessionSummary() {
       };
     } else {
       return {
-        title: '¡Sigue practicando!',
+        title: 'Sigue practicando',
         subtitle: 'Cada intento cuenta, tú puedes',
         icon: Music2,
         color: 'text-amber-600',
@@ -62,7 +62,7 @@ export function SessionSummary() {
   // Mensajes de voz según resultado
   const getVoiceMessage = () => {
     if (percentage === 100) {
-      return `¡Excelente! Conoces perfectamente "${track}". Qué bonito que la recuerdes. ¡Sigue así!`;
+      return `Excelente. Conoces perfectamente "${track}". Qué bonito que la recuerdes. Sigue así.`;
     } else if (percentage >= 80) {
       return `Muy bien, lo estás haciendo de maravilla con "${track}". Cada vez la conoces mejor.`;
     } else if (percentage >= 60) {
@@ -80,10 +80,10 @@ export function SessionSummary() {
   
   // Mensaje de voz al cargar resultados - SOLO si no se ha hablado antes
   useEffect(() => {
-    if (voiceEnabled && !hasSpoken) {
+    if (voiceEnabled && !hasSpoken && !isToggling) {
       const timer = setTimeout(() => {
         const voiceMessage = getVoiceMessage();
-        voiceService.speak(voiceMessage, true);
+        speak(voiceMessage);
         setHasSpoken(true);
       }, 500);
       
@@ -91,27 +91,13 @@ export function SessionSummary() {
     }
   }, [voiceEnabled]);
   
-  const toggleVoice = () => {
-    const newState = !voiceEnabled;
-    setVoiceEnabled(newState);
-    if (newState) {
-      setTimeout(() => voiceService.speak("Listo, ahora te hablaré para ayudarte.", true), 100);
-    } else {
-      setTimeout(() => voiceService.speak("Está bien, ya no hablaré. Si me necesitas, solo presiona el botón otra vez.", true), 100);
-    }
-  };
-  
   const handleAnotherSong = () => {
-    if (voiceEnabled) {
-      voiceService.speak(anotherSongMessage, true);
-    }
+    speak(anotherSongMessage);
     setTimeout(() => navigate('/songs'), 1500);
   };
   
   const handleMenu = () => {
-    if (voiceEnabled) {
-      voiceService.speak(menuMessage, true);
-    }
+    speak(menuMessage);
     setTimeout(() => navigate('/menu'), 1500);
   };
   

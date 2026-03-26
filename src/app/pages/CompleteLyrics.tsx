@@ -23,6 +23,7 @@ export function CompleteLyrics() {
   const [voiceModeActive, setVoiceModeActive] = useState(false);
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [voiceWarning, setVoiceWarning] = useState<string | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
 
   const recognitionRef = useRef<any | null>(null);
@@ -91,14 +92,13 @@ export function CompleteLyrics() {
     setTimeLeft(3);
     setVoiceModeActive(false);
     setVoiceError(null);
+    setVoiceWarning(null);
     setListening(false);
     setAiHint(null);
     setShowHint(false);
   }, [currentQuestion]);
 
-  // ============================================
-  // PRECARGADO DE PISTAS
-  // ============================================
+
   useEffect(() => {
     const preloadHints = async () => {
       if (!isValid || !currentLyric) return;
@@ -168,6 +168,7 @@ export function CompleteLyrics() {
       stopVoiceRecognition();
     }
     setVoiceModeActive(false);
+    setVoiceWarning(null);
   };
 
   const handleContinue = () => {
@@ -190,6 +191,7 @@ export function CompleteLyrics() {
       setIsCorrect(false);
       setVoiceModeActive(false);
       setVoiceError(null);
+      setVoiceWarning(null);
       setAiHint(null);
     }
   };
@@ -256,6 +258,7 @@ export function CompleteLyrics() {
 
     setListening(true);
     setVoiceError(null);
+    setVoiceWarning(null);
     setVoiceModeActive(true);
 
     recognition.onresult = (event: any) => {
@@ -279,7 +282,8 @@ export function CompleteLyrics() {
         recognition.stop();
         handleAnswerSelect(matchedOption);
       } else {
-        alert("No entendí bien. Intenta decir una de las opciones.");
+        setVoiceWarning("No entendí bien. Intenta decir una de las opciones.");
+        setListening(false);
       }
     };
 
@@ -288,6 +292,8 @@ export function CompleteLyrics() {
 
       if (event.error === "not-allowed") {
         setVoiceError("Permiso denegado. Activa el micrófono.");
+      } else if (event.error === "no-speech") {
+        setVoiceWarning("No escuché nada. Intenta de nuevo.");
       } else {
         setVoiceError("Error con el micrófono. Intenta de nuevo.");
       }
@@ -321,6 +327,7 @@ export function CompleteLyrics() {
 
     setListening(false);
     setVoiceModeActive(false);
+    setVoiceWarning(null);
   };
 
   const toggleVoiceMode = () => {
@@ -560,10 +567,28 @@ export function CompleteLyrics() {
                 </div>
               )}
               
-              {voiceModeActive && !listening && !voiceError && (
+              {voiceModeActive && !listening && !voiceError && !voiceWarning && (
                 <p className="text-center text-green-600 mt-2">Preparando micrófono...</p>
               )}
             </div>
+
+            {/* Mensaje de advertencia (en lugar de alert) */}
+            {voiceWarning && (
+              <div className="mt-4 mb-4 p-4 bg-yellow-50 rounded-xl border-2 border-yellow-300 w-full">
+                <p className="text-lg text-yellow-700 text-center">
+                  {voiceWarning}
+                </p>
+              </div>
+            )}
+
+            {/* Mensaje de error */}
+            {voiceError && (
+              <div className="mt-4 mb-4 p-4 bg-red-100 rounded-xl border-2 border-red-300 w-full">
+                <p className="text-lg text-red-700 text-center">
+                  {voiceError}
+                </p>
+              </div>
+            )}
 
             <div className="flex items-center gap-8">
               {/* Botón de micrófono */}
@@ -611,15 +636,6 @@ export function CompleteLyrics() {
                 )}
               </div>
             </div>
-
-            {/* Mensajes de error */}
-            {voiceError && (
-              <div className="mt-4 p-4 bg-red-100 rounded-xl border-2 border-red-300 w-full">
-                <p className="text-lg text-red-700 text-center">
-                  {voiceError}
-                </p>
-              </div>
-            )}
           </div>
         </div>
 
